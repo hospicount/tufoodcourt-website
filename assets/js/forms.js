@@ -297,6 +297,7 @@
         // Enter inside a cart field must not submit the whole form.
         row.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); } }));
       });
+      refreshTotals();
     }
 
     // ----- prices -----

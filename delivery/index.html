@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://formsubmit.co; base-uri 'self'; form-action 'self'">
+  <title>Pedidos: delivery y recogido · Tu Food Court</title>
+  <meta name="description" content="Pide tu almuerzo criollo, pizza o tacos para recoger en el mostrador o, si eres empleado de Metro Medical Center, te lo llevamos a tu departamento. Programa para hoy u otro día.">
+  <link rel="canonical" href="https://tufoodcourtpr.com/delivery/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Pedidos: delivery (empleados MMC) y recogido · Tu Food Court">
+  <meta property="og:description" content="Pide desde tu celular para recoger en el mostrador o para delivery a tu área dentro de Metro Medical Center.">
+  <meta property="og:url" content="https://tufoodcourtpr.com/delivery/">
+  <meta property="og:image" content="https://tufoodcourtpr.com/assets/img/og-image.jpg">
+  <meta name="theme-color" content="#004f39">
+  <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Bitter:ital,wght@1,700;1,800&family=Nunito+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/site.css?v=20261028">
+</head>
+<body data-page="delivery" data-title-en="Orders: delivery & pickup · Tu Food Court">
+  <a class="skip" href="#main" data-i18n="skip">Saltar al contenido</a>
+  <header class="site-header" data-site-header></header>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap">
+        <span class="eyebrow" data-i18n="d.eyebrow">Delivery y recogido · Metro Medical Center</span>
+        <h1 data-i18n="d.title">Pide ahora o programa tu pedido</h1>
+        <p data-i18n="d.lead">Delivery a tu área si trabajas en MMC, o recogido en nuestro mostrador. Escoge tus platos y la hora, y te confirmamos el total antes de prepararlo.</p>
+      </div>
+    </section>
+
+    <section class="form-shell">
+      <div class="wrap">
+        <div class="form-card">
+          <div class="notice" role="note">
+            <span class="notice-icon" aria-hidden="true">🏥</span>
+            <div>
+              <strong data-i18n="d.noteT">El delivery es exclusivo para empleados de Metro Medical Center.</strong>
+              <span data-i18n="d.note">Al entregar te pediremos tu identificación de empleado. ¿No trabajas en MMC? Pide para recoger en el mostrador. Muy pronto también estaremos en DoorDash y Uber Eats.</span>
+            </div>
+          </div>
+
+          <form data-form="delivery" novalidate autocomplete="on">
+            <input class="hp" type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+            <fieldset>
+              <legend><span class="n">1</span><span data-i18n="d.f1">Tus datos</span></legend>
+              <div class="grid-2">
+                <div class="field span-2" role="group" aria-labelledby="d-mode-l">
+                  <span class="label" id="d-mode-l" data-i18n="d.mode">¿Cómo quieres tu pedido?</span>
+                  <div class="chips" data-fulfillment></div>
+                  <p class="hint" data-mode-hint></p>
+                </div>
+                <div class="field">
+                  <label for="d-nombre" data-i18n="f.name">Nombre completo</label>
+                  <input id="d-nombre" name="nombre" type="text" required autocomplete="name" maxlength="80">
+                </div>
+                <div class="field">
+                  <label for="d-tel" data-i18n="f.phone">Teléfono / celular</label>
+                  <input id="d-tel" name="telefono" type="tel" required autocomplete="tel" inputmode="tel" placeholder="787-000-0000" maxlength="20" pattern="[0-9\s\(\)\.\+\-]{7,20}">
+                </div>
+                <div class="field">
+                  <label for="d-email" data-i18n="f.email">Email</label>
+                  <input id="d-email" name="email" type="email" required autocomplete="email" inputmode="email" maxlength="120">
+                </div>
+                <div class="field" data-employee-only>
+                  <label for="d-id" data-i18n="d.empId">Número de empleado <span class="hint">(como aparece en tu ID)</span></label>
+                  <input id="d-id" name="empleado_id" type="text" required maxlength="30" autocomplete="off">
+                </div>
+                <div class="field span-2" data-employee-only>
+                  <label for="d-depto" data-i18n="d.dept">Departamento / unidad</label>
+                  <input id="d-depto" name="departamento" type="text" required list="deptos" maxlength="60" data-i18n-ph="d.deptPh" placeholder="Ej.: Emergencias, Laboratorio, Farmacia…">
+                  <datalist id="deptos">
+                    <option value="Sala de Emergencias"></option>
+                    <option value="Sala de Operaciones"></option>
+                    <option value="Cuidado Intensivo (ICU)"></option>
+                    <option value="Enfermería (piso)"></option>
+                    <option value="Laboratorio"></option>
+                    <option value="Radiología / Imágenes"></option>
+                    <option value="Farmacia"></option>
+                    <option value="Admisiones / Registro"></option>
+                    <option value="Administración"></option>
+                    <option value="Facturación"></option>
+                    <option value="Mantenimiento"></option>
+                    <option value="Seguridad"></option>
+                    <option value="Oficinas médicas"></option>
+                  </datalist>
+                </div>
+                <div class="field span-2" role="group" aria-labelledby="d-confirm-l">
+                  <span class="label" id="d-confirm-l" data-i18n="d.confirmBy">¿Cómo te confirmamos el pedido?</span>
+                  <div class="chips" data-confirm-by></div>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="n">2</span><span data-legend-when>Entrega</span></legend>
+              <div class="grid-2">
+                <div class="field span-2" data-delivery-only>
+                  <label for="d-entrega" data-i18n="d.where">¿Dónde te lo entregamos? <span class="hint">(edificio, piso, estación o salón)</span></label>
+                  <input id="d-entrega" name="entrega" type="text" required maxlength="120" data-i18n-ph="d.wherePh" placeholder="Ej.: Torre principal, 4to piso, estación de enfermería B">
+                </div>
+                <div class="field" data-delivery-only>
+                  <label for="d-ext" data-i18n="d.ext">Extensión interna <span class="hint">(opcional)</span></label>
+                  <input id="d-ext" name="extension" type="text" maxlength="12" inputmode="numeric">
+                </div>
+                <div class="field">
+                  <label for="d-fecha" data-i18n="d.date">Fecha</label>
+                  <input id="d-fecha" name="fecha" type="date" required>
+                  <p class="hint" data-cfg-lastcall></p>
+                </div>
+                <div class="field span-2">
+                  <label for="d-ventana" data-label-window>Hora de entrega preferida</label>
+                  <select id="d-ventana" name="ventana" required></select>
+                  <p class="hint" data-window-hint>Sujeta a disponibilidad; te confirmamos la hora exacta.</p>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="n">3</span><span data-i18n="d.f3">Tu pedido</span></legend>
+              <p class="hint" data-i18n="d.orderHint">Toca un plato para añadirlo y elige sus opciones en tu pedido. Precios sin IVU; te confirmamos el total.</p>
+              <div class="order-grid">
+                <div data-picker role="group" aria-label="Menú" data-i18n-aria="nav.menu"></div>
+                <div class="cart">
+                  <p class="cart-title" data-cart-title tabindex="-1"><span data-i18n="d.cart">Tu pedido</span> <span class="cart-count" data-cart-count>0</span></p>
+                  <span class="sr-only" aria-live="polite" aria-atomic="true" data-cart-live></span>
+                  <div data-cart></div>
+                  <p class="cart-subtotal" data-subtotal hidden></p>
+                  <p class="field-error" data-cart-error hidden role="alert" data-i18n="d.cartEmpty">Añade al menos un plato para continuar.</p>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="n">4</span><span data-i18n="d.f4">Pago y notas</span></legend>
+              <div class="grid-2">
+                <div class="field span-2" role="group" aria-labelledby="d-pay-l">
+                  <span class="label" id="d-pay-l" data-i18n="d.pay">¿Cómo vas a pagar?</span>
+                  <div class="chips" data-payment></div>
+                  <p class="hint" data-i18n="d.payHint">Aceptamos todas las tarjetas de crédito principales (Visa, Mastercard, American Express y Discover).</p>
+                </div>
+                <div class="field span-2">
+                  <label for="d-notas" data-i18n="d.notes">Notas para la cocina o el repartidor <span class="hint">(opcional)</span></label>
+                  <textarea id="d-notas" name="notas" maxlength="400" data-i18n-ph="d.notesPh" placeholder="Alergias, instrucciones para encontrarte, etc."></textarea>
+                </div>
+                <div class="field span-2" data-employee-only>
+                  <label class="check">
+                    <input type="checkbox" name="confirmo_empleado" value="Sí" required>
+                    <span data-i18n="d.confirm">Confirmo que soy empleado(a) de Metro Medical Center y presentaré mi identificación al recibir mi pedido.</span>
+                  </label>
+                </div>
+                <div class="field span-2">
+                  <label class="check">
+                    <input type="checkbox" name="recordar" value="Sí" checked>
+                    <span data-i18n="d.remember">Recordar mis datos en este teléfono para la próxima vez (se guardan solo en este dispositivo).</span>
+                  </label>
+                </div>
+              </div>
+            </fieldset>
+
+            <p class="form-error" data-form-error hidden role="alert" tabindex="-1"></p>
+            <div class="form-actions">
+              <button class="btn btn-red btn-lg" type="submit" data-i18n="d.submit">Enviar pedido</button>
+              <p class="fine" data-i18n="d.fine">Al enviar, recibirás una copia por email. Usamos tus datos solo para preparar y entregar tu pedido. <a href="/privacidad/">Privacidad</a>.</p>
+            </div>
+          </form>
+
+          <div class="toast" data-toast hidden role="status"></div>
+
+          <div class="done" data-form-done hidden tabindex="-1">
+            <div class="done-icon" aria-hidden="true">✓</div>
+            <h2 data-i18n="d.doneT">¡Pedido recibido!</h2>
+            <p class="ref" data-ref></p>
+            <div data-summary></div>
+            <p data-i18n="d.done">Te contactaremos para confirmar el total y la hora. Guarda tu número de referencia.</p>
+            <p>
+              <a class="btn btn-green" href="/delivery/" data-keep-src data-i18n="d.again">Hacer otro pedido</a>
+              <a class="btn btn-amber" href="/" data-i18n="f.home">Volver al inicio</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" data-site-footer></footer>
+
+  <script src="/assets/js/config.js?v=20261028"></script>
+  <script src="/assets/js/menu.js?v=20261028"></script>
+  <script src="/assets/js/i18n.js?v=20261028"></script>
+  <script src="/assets/js/site.js?v=20261028"></script>
+  <script src="/assets/js/forms.js?v=20261028"></script>
+</body>
+</html>

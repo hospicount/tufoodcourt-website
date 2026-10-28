@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://formsubmit.co; base-uri 'self'; form-action 'self'">
+  <title>Material QR para imprimir · Tu Food Court</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#004f39">
+  <link rel="icon" type="image/png" href="/assets/img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Bitter:ital,wght@1,700;1,800&family=Nunito+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/site.css?v=20261028">
+  <style>
+    /* Print pieces: letter-size poster and a 4-up table-tent card sheet. */
+    .tools { background: var(--paper); border-bottom: 1px solid var(--line); }
+    .tools .wrap { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-top: 14px; padding-bottom: 14px; }
+    .tools .spacer { flex: 1; }
+    .tools .muted { font-size: .9rem; }
+    .sheets { padding: 30px 0 60px; display: grid; gap: 40px; justify-items: center; overflow-x: auto; }
+    .sheet { width: 8.5in; height: 11in; background: #fff; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+    .sheet[hidden] { display: none; }
+    /* On narrow screens shrink the preview with zoom (keeps layout flow); browsers without zoom just scroll. */
+    @media screen and (max-width: 900px) { .sheet { zoom: .42; } }
+    @media screen and (max-width: 420px) { .sheet { zoom: .38; } }
+
+    /* poster */
+    .poster { background: var(--green); color: #fff; display: flex; flex-direction: column; align-items: center; text-align: center; padding: .7in .6in .5in; }
+    .poster::before { content: ''; position: absolute; inset: 0; background: url('/assets/img/pattern-tile.png') repeat; background-size: 2.2in; opacity: .18; mix-blend-mode: soft-light; }
+    .poster > * { position: relative; }
+    .poster .logo { width: 2.4in; margin-bottom: .15in; }
+    .poster h1 { color: #fff; font-size: .56in; line-height: 1.05; margin: 0 0 .1in; }
+    .poster h1 .accent { color: var(--amber); display: block; font-size: .72em; }
+    .poster .sub { font-size: .19in; max-width: 6in; color: #e8f2ed; margin: 0 0 .22in; line-height: 1.35; }
+    .poster .qr-box { background: #fff; border-radius: .25in; padding: .2in; box-shadow: 0 .15in .4in rgba(0,0,0,.25); }
+    .poster .qr-box img { width: 2.9in; height: 2.9in; display: block; }
+    .poster .url { font-family: var(--font-display); font-size: .32in; color: var(--amber); margin: .22in 0 .06in; letter-spacing: .5px; }
+    .poster .how { display: flex; gap: .3in; justify-content: center; font-size: .16in; font-weight: 800; color: #fff; margin-top: .1in; }
+    .poster .how span { background: rgba(255,255,255,.14); border-radius: 999px; padding: .08in .22in; }
+    .poster .fine { position: absolute; bottom: .32in; left: .6in; right: .6in; font-size: .13in; color: #bcd6c9; line-height: 1.35; }
+
+    /* table tents / counter cards (4 per letter sheet, 4.25 x 5.5in each) */
+    /* fixed quarter-sheet cells so the dashed cut guides land exactly on the 4.25in × 5.5in lines */
+    .cards { display: grid; grid-template-columns: 4.25in 4.25in; grid-template-rows: 5.5in 5.5in; }
+    .tcard { border: 1px dashed #bbb; display: flex; flex-direction: column; text-align: center; padding: 0; color: var(--green-deep); background: var(--cream); position: relative; overflow: hidden; min-height: 0; }
+    .tcard p { margin: 0; }
+    .tcard-head { background: var(--green); display: flex; justify-content: center; padding: .16in 0 .12in; } /* logo on brand green so the white wordmark stays whole */
+    .tcard .logo { width: 1.25in; margin: 0; }
+    .tcard-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .12in .3in .18in; }
+    .tcard h2 { font-size: .3in; color: var(--green); margin: 0 0 .03in; line-height: 1.05; }
+    .tcard .sub { font-size: .13in; font-weight: 700; color: var(--red-deep); margin: 0 0 .12in; line-height: 1.3; }
+    .tcard img.qr { width: 2in; height: 2in; background: #fff; padding: .1in; border-radius: .12in; border: 2px solid var(--line); }
+    .tcard .url { font-family: var(--font-display); font-size: .19in; color: var(--green); margin-top: .1in; line-height: 1.3; }
+    .tcard .mini { font-size: .11in; color: var(--muted); font-weight: 700; margin-top: .03in; line-height: 1.3; }
+
+    @media print {
+      @page { size: letter; margin: 0; }
+      body { background: #fff; }
+      .site-header, .site-footer, .tools, .skip, .no-print { display: none !important; }
+      .sheets { padding: 0; gap: 0; display: block; }
+      .sheet { box-shadow: none; page-break-after: always; zoom: 1; margin: 0; }
+      .sheet[hidden] { display: none !important; }
+      .poster { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .tcard, .poster, .poster::before { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body data-page="qr" data-title-en="Printable QR material · Tu Food Court">
+  <a class="skip" href="#main" data-i18n="skip">Saltar al contenido</a>
+  <header class="site-header" data-site-header></header>
+
+  <main id="main">
+    <div class="tools">
+      <div class="wrap">
+        <strong data-i18n="q.title">Material QR para imprimir</strong>
+        <span class="muted" data-i18n="q.lead">Afiche tamaño carta y tarjetas de mostrador (4 por hoja). Imprime en color, sin márgenes.</span>
+        <span class="spacer"></span>
+        <label class="chip"><input type="radio" name="piece" value="poster" checked><span data-i18n="q.poster">Afiche</span></label>
+        <label class="chip"><input type="radio" name="piece" value="cards"><span data-i18n="q.cards">Tarjetas</span></label>
+        <label class="chip"><input type="radio" name="piece" value="all"><span data-i18n="q.both">Ambos</span></label>
+        <button class="btn btn-green btn-sm" type="button" onclick="window.print()" data-i18n="q.print">Imprimir / Guardar PDF</button>
+        <a class="btn btn-amber btn-sm" href="/assets/img/qr/qr-pedidos.png" download="TuFoodCourt-QR-pedidos.png" data-i18n="q.png">Descargar QR (PNG)</a>
+        <a class="btn btn-amber btn-sm" href="/assets/img/qr/qr-pedidos.svg" download="TuFoodCourt-QR-pedidos.svg">SVG</a>
+      </div>
+    </div>
+
+    <div class="sheets">
+      <!-- POSTER -->
+      <section class="sheet poster" data-piece="poster" aria-label="Afiche">
+        <img class="logo" src="/assets/img/logo-v1.png" alt="Tu Food Court">
+        <h1>¿Delivery o catering?<span class="accent">Escanea y pide</span></h1>
+        <p class="sub"><strong>Delivery exclusivo para empleados de Metro Medical Center</strong> — te lo llevamos a tu área. Recogido en el mostrador para todos. Catering para reuniones, celebraciones de staff y eventos.</p>
+        <div class="qr-box"><img src="/assets/img/qr/qr-pedidos.svg" alt="Código QR: tufoodcourtpr.com/pedidos"></div>
+        <p class="url">tufoodcourtpr.com/pedidos</p>
+        <div class="how"><span>1 · Escanea</span><span>2 · Escoge</span><span>3 · Te confirmamos</span></div>
+        <p class="fine">Criollo · Pizza · Tacos — Food Court, Metro Medical Center, Bayamón. <span data-cfg-hours-inline></span>. <span data-cfg-lastcall></span> El delivery requiere identificación de empleado al momento de la entrega. Pago: <span data-cfg-pay></span>.</p>
+      </section>
+
+      <!-- CARDS -->
+      <section class="sheet cards" data-piece="cards" hidden aria-label="Tarjetas de mostrador">
+        <div class="tcard">
+          <div class="tcard-head"><img class="logo" src="/assets/img/logo-v1.png" alt=""></div>
+          <div class="tcard-body">
+            <h2>Escanea y pide</h2>
+            <p class="sub">Delivery (empleados MMC) · Recogido · Catering</p>
+            <img class="qr" src="/assets/img/qr/qr-pedidos.svg" alt="QR tufoodcourtpr.com/pedidos">
+            <p class="url">tufoodcourtpr.com/pedidos</p>
+            <p class="mini">Criollo · Pizza · Tacos</p>
+          </div>
+        </div>
+        <div class="tcard">
+          <div class="tcard-head"><img class="logo" src="/assets/img/logo-v1.png" alt=""></div>
+          <div class="tcard-body">
+            <h2>Escanea y pide</h2>
+            <p class="sub">Delivery (empleados MMC) · Recogido · Catering</p>
+            <img class="qr" src="/assets/img/qr/qr-pedidos.svg" alt="">
+            <p class="url">tufoodcourtpr.com/pedidos</p>
+            <p class="mini">Criollo · Pizza · Tacos</p>
+          </div>
+        </div>
+        <div class="tcard">
+          <div class="tcard-head"><img class="logo" src="/assets/img/logo-v1.png" alt=""></div>
+          <div class="tcard-body">
+            <h2>Escanea y pide</h2>
+            <p class="sub">Delivery (empleados MMC) · Recogido · Catering</p>
+            <img class="qr" src="/assets/img/qr/qr-pedidos.svg" alt="">
+            <p class="url">tufoodcourtpr.com/pedidos</p>
+            <p class="mini">Criollo · Pizza · Tacos</p>
+          </div>
+        </div>
+        <div class="tcard">
+          <div class="tcard-head"><img class="logo" src="/assets/img/logo-v1.png" alt=""></div>
+          <div class="tcard-body">
+            <h2>Escanea y pide</h2>
+            <p class="sub">Delivery (empleados MMC) · Recogido · Catering</p>
+            <img class="qr" src="/assets/img/qr/qr-pedidos.svg" alt="">
+            <p class="url">tufoodcourtpr.com/pedidos</p>
+            <p class="mini">Criollo · Pizza · Tacos</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer" data-site-footer></footer>
+
+  <script src="/assets/js/config.js?v=20261028"></script>
+  <script src="/assets/js/menu.js?v=20261028"></script>
+  <script src="/assets/js/i18n.js?v=20261028"></script>
+  <script src="/assets/js/site.js?v=20261028"></script>
+  <script>
+    document.querySelectorAll('[name=piece]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        document.querySelectorAll('[data-piece]').forEach(function (s) { s.hidden = r.value !== 'all' && s.dataset.piece !== r.value; });
+      });
+    });
+  </script>
+</body>
+</html>

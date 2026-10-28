@@ -26,7 +26,11 @@
   TFC.tr = (v) => (lang === 'en' && window.TFC_EN_VALUES && window.TFC_EN_VALUES[v]) || v;
 
   // ---------- prices ----------
-  const adjust = (n) => Math.round(n * (1 + (C.priceAdjustPercent || 0) / 100) * 100) / 100;
+  const adjust = (n) => {
+    let v = n * (1 + (C.priceAdjustPercent || 0) / 100);
+    if (C.priceRounding === 'up99') v = Math.ceil(v - 0.99 - 1e-9) + 0.99; // 12.45 → 12.99, 9.34 → 9.99, 12.99 stays
+    return Math.round(v * 100) / 100;
+  };
   TFC.money = (n) => (n == null ? '' : '$' + (Number.isInteger(n) ? String(n) : n.toFixed(2)));
   // Unit price for an item with the chosen options: number, null = not priced yet, undefined = option not chosen yet.
   TFC.price = (it, opts) => {

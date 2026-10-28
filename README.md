@@ -14,7 +14,7 @@ Sitio estático (HTML/CSS/JS sin build) para **tufoodcourtpr.com**. Español por
 
 ## Dónde se edita cada cosa
 - **Teléfono, email, horario (`schedule`), redes, última llamada / duración de ventanas / días de anticipación, métodos de pago, recogido solo-empleados sí/no, días mínimos de catering** → `assets/js/config.js`. Las ventanas de hora y las líneas de horario del sitio se generan solas a partir de `schedule` (hoy: L–V 6:00 AM–2:00 PM, sáb. 8:00 AM–1:00 PM, dom. cerrado; última llamada 30 min antes de cerrar = 1:30 PM / 12:30 PM). El afiche de `/qr/` también lee horario, última llamada y métodos de pago de aquí..
-- **Menú y precios** → `assets/js/menu.js` (fuente: `MENU CON PRECIOS BAYAMON.xlsx`, precios sin IVU; `price` fijo o `priceBy` + `prices` cuando depende de una opción, p. ej. tamaño de pizza; `price: null` = «precio en mostrador», no suma al subtotal). El recargo global del 3.8% se controla con `priceAdjustPercent` en `config.js`.
+- **Menú y precios** → `assets/js/menu.js` (fuente: `MENU CON PRECIOS BAYAMON.xlsx`, precios sin IVU; `price` fijo o `priceBy` + `prices` cuando depende de una opción, p. ej. tamaño de pizza; `price: null` = «precio en mostrador», no suma al subtotal). El recargo del 3.8% y el redondeo hacia arriba a .99 se controlan con `priceAdjustPercent` / `priceRounding` en `config.js`; el sitio calcula el precio final a partir del precio de la hoja.
 - **Textos en inglés** → `assets/js/i18n.js` (los textos en español viven en cada HTML)
 - **Colores y tipografía** → `assets/css/site.css` (verde `#004F39`, rojo-naranja `#DB461C`, ámbar `#F59924`, muestreados del logo oficial)
 - **Logos** → `assets/img/` (copiados de los assets de marca)
@@ -30,9 +30,9 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 **Delivery vs. recogido:** el delivery es solo para empleados de MMC (pide número de empleado, departamento y la confirmación con ID). El recogido en el mostrador está abierto a todo el mundo; si prefieres que también sea solo para empleados, pon `pickupEmployeesOnly: true` en `config.js`.
 
 ## Publicar (GitHub Pages, $0)
-1. Crear repo (p. ej. `tufoodcourt/tufoodcourt-website`), `git init`, commit, push a `main`.
+1. Repo: `https://github.com/hospicount/tufoodcourt-website` (rama `main`). Para publicar cambios: `git add -A && git commit -m "..." && git push`.
 2. Settings → Pages → Deploy from branch `main` / root. El archivo `CNAME` ya apunta a `tufoodcourtpr.com`.
-3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → <org>.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
+3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
 Los `<script>`/`<link>` llevan `?v=20261028`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.

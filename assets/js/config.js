@@ -36,9 +36,11 @@ window.TFC_CONFIG = {
   orderLeadMinutes: 30,           // today's windows ending sooner than this are greyed out
   maxAdvanceDays: 14,             // how far ahead an order can be scheduled
   pickupEmployeesOnly: false,     // true = pickup also requires MMC employee details
-  // Prices come from assets/js/menu.js (before IVU). The price sheet says "hay que incluir el 3.8%":
-  // set this to 3.8 to mark up every listed price by 3.8% (rounded to the cent); 0 shows the sheet prices as-is.
-  priceAdjustPercent: 0,
+  // Prices come from assets/js/menu.js (sheet prices, before IVU). Owner rule (2026-10-28): add 3.8% to every
+  // listed price, then round UP to the next .99 (e.g. $11.99 → $12.45 → $12.99). Set percent to 0 and rounding
+  // to 'none' to show the sheet prices exactly as listed.
+  priceAdjustPercent: 3.8,
+  priceRounding: 'up99', // 'up99' | 'none'
   paymentOptions: ['ATH Móvil', 'Tarjeta de crédito', 'Efectivo'], // Spanish values; EN display in i18n.js TFC_EN_VALUES
   confirmChannels: ['Llamada', 'Texto (SMS)', 'WhatsApp', 'Email'],
   fulfillmentOptions: ['Delivery a mi área (empleados MMC)', 'Recogido en el mostrador'],

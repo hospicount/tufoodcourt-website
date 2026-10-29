@@ -200,7 +200,7 @@
         <div class="pick-list">${s.sections.map((sec) => sec.items.filter((i) => i.orderable).map((it) => `
           <button type="button" class="pick-item" data-add="${it.id}" aria-label="${L('Añadir', 'Add')} ${esc(tr(it.name))}">
             <span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
-            <span class="pick-right"><span class="mi-price">${esc(TFC.priceLabel(it) || L('precio en mostrador', 'counter price'))}</span><span class="pick-plus" aria-hidden="true">+</span></span>
+            <span class="pick-right"><span class="mi-price">${TFC.priceHtml(it) || esc(L('precio en mostrador', 'counter price'))}</span><span class="pick-plus" aria-hidden="true">+</span></span>
           </button>`).join('')).join('')}
         </div>`;
       picker.querySelectorAll('[data-station]').forEach((b) => b.addEventListener('click', () => {

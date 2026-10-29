@@ -35,7 +35,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261029b`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261029d`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash

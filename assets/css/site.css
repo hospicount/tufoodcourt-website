@@ -32,7 +32,8 @@ body {
   line-height: 1.6;
   color: var(--ink);
   background: var(--cream);
-  overflow-x: hidden;
+  /* no overflow-x here: with html { overflow-x: clip } a body overflow value would make body a scroll
+     container and un-stick the header */
 }
 img { max-width: 100%; height: auto; display: block; }
 [hidden] { display: none !important; }
@@ -299,13 +300,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 .order-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
 @media (max-width: 760px) { .order-grid { grid-template-columns: 1fr; } }
 .pick-list { display: grid; gap: 8px; max-height: 440px; overflow: auto; padding-right: 4px; }
+@media (max-width: 760px) { .pick-list { max-height: none; overflow: visible; padding-right: 0; } } /* phones: the page scrolls, no hidden inner list */
 .pick-item {
-  display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; width: 100%;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; text-align: left; width: 100%;
   background: #fffdf9; border: 2px solid #cdbfa6; border-radius: var(--radius-sm); padding: 10px 12px; cursor: pointer; font: inherit; color: inherit;
 }
 .pick-item:hover { border-color: var(--green); }
-.pick-main { flex: 1; min-width: 0; }
-.pick-right { display: flex; align-items: center; gap: 10px; flex: none; }
+.pick-main { flex: 1 1 170px; min-width: 0; } /* below ~170px of room the price + "+" wrap under the name instead of squeezing it */
+.pick-right { display: flex; align-items: center; gap: 10px; flex: none; margin-left: auto; }
 .pick-right .mi-price { font-size: .9rem; text-align: right; max-width: 120px; white-space: normal; }
 .pick-plus { flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--green); color: #fff; display: grid; place-items: center; font-weight: 900; font-size: 1.2rem; }
 .cart { background: var(--cream); border-radius: var(--radius-sm); padding: 14px; border: 2px dashed var(--line); }
@@ -327,10 +329,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 .qty input::-webkit-inner-spin-button, .qty input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .cart-remove { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 1rem; width: 40px; height: 40px; border-radius: 50%; }
 .cart-remove:hover { background: #fdeae4; color: var(--red-deep); }
+@media (max-width: 760px) {
+  /* phone cart line: name | price on the first row, stepper | ✕ on the second, so ✕ never strands on its own row */
+  .cart-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: center; }
+  .cart-head .mi-name { grid-column: 1; }
+  .cart-head .cart-price { grid-column: 2; justify-self: end; text-align: right; white-space: normal; }
+  .cart-head .qty { grid-column: 1; justify-self: start; }
+  .cart-head .cart-remove { grid-column: 2; justify-self: end; }
+}
 .cart-opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .cart-opts label { font-size: .8rem; font-weight: 800; color: var(--muted); display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 120px; }
-.cart-opts select { min-height: 38px; padding: .35em .5em; font-size: .9rem; }
-.cart-note { margin-top: 8px; min-height: 38px !important; padding: .4em .6em !important; font-size: .9rem !important; }
+/* keep every focusable text control at >= 16px (1rem): iOS Safari and in-app browsers zoom the page on focus below that and never zoom back out */
+.cart-opts select { min-height: 40px; padding: .25em .5em; }
+.cart-note { margin-top: 8px; min-height: 40px !important; padding: .3em .6em !important; }
 
 .toast { position: fixed; left: 12px; right: 12px; bottom: 14px; z-index: 60; background: var(--green-deep); color: #fff; border-radius: 999px; padding: 8px 8px 8px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.3); font-weight: 800; font-size: .95rem; }
 .toast[hidden] { display: none; }

@@ -45,7 +45,6 @@ window.TFC_CONFIG = {
   confirmChannels: ['Llamada', 'Texto (SMS)', 'WhatsApp', 'Email'],
   fulfillmentOptions: ['Delivery a mi área (empleados MMC)', 'Recogido en el mostrador'],
 
-  // Catering: how many days in advance an event must be requested, and minimum headcount
-  cateringLeadDays: 3,
-  cateringMinGuests: 10,
+  // Catering: how many hours before the service time a request must arrive (48 = two days). No minimum headcount.
+  cateringLeadHours: 48,
 };

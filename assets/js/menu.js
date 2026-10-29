@@ -64,12 +64,12 @@ window.TFC_MENU = [
   {
     id: 'pizza',
     station: { es: 'Pizza', en: 'Pizza' },
-    tagline: { es: '10" personal o 16" grande · masa regular o de coliflor', en: '10" personal or 16" large · regular or cauliflower crust' },
+    tagline: { es: '10" personal o 16" grande', en: '10" personal or 16" large' },
     color: 'red',
     sections: [
       {
         title: { es: 'Las pizzas', en: 'The pizzas' },
-        note: { es: 'Precios 10" / 16". Todas disponibles en masa regular o de coliflor.', en: 'Prices 10" / 16". Every pizza comes on regular or cauliflower crust.' },
+        note: { es: 'Precios 10" / 16".', en: 'Prices 10" / 16".' },
         items: [
           { id: 'pz-queso', name: 'Queso', desc: { es: 'La clásica de mozzarella', en: 'The mozzarella classic' }, prices: { '10"': 9, '16"': 18 } },
           { id: 'pz-pepperoni', name: 'Pepperoni', prices: { '10"': 10, '16"': 20 } },
@@ -82,7 +82,6 @@ window.TFC_MENU = [
           priceBy: 'tamano',
           options: [
             { key: 'tamano', label: { es: 'Tamaño', en: 'Size' }, choices: ['10"', '16"'] },
-            { key: 'masa', label: { es: 'Masa', en: 'Crust' }, choices: ['Regular', 'Coliflor'] },
           ],
         })),
       },
@@ -90,7 +89,7 @@ window.TFC_MENU = [
   },
   {
     id: 'mexicano',
-    station: { es: 'Tacos y Mexicano', en: 'Tacos & Mexican' },
+    station: { es: 'Mexicano', en: 'Mexican' },
     tagline: { es: 'Tacos, burritos, quesadillas, nachos y más', en: 'Tacos, burritos, quesadillas, nachos and more' },
     color: 'amber',
     sections: [

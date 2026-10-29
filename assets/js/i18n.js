@@ -3,7 +3,7 @@
 // Display translations for Spanish DATA values (menu option choices, payment methods, catering selects).
 // The Spanish value is what gets sent to the kitchen; this only changes what the EN user sees.
 window.TFC_EN_VALUES = {
-  'Personal': 'Personal', 'Grande': 'Large', 'Regular': 'Regular', 'Coliflor': 'Cauliflower',
+  'Personal': 'Personal', 'Grande': 'Large', 'Regular': 'Regular',
   'Roja': 'Red', 'Verde': 'Green', 'Blanca': 'White',
   'Gratinado con salsa': 'Gratinéed with sauce', 'Gratinado sin salsa': 'Gratinéed, no sauce', 'Sin gratinar': 'Not gratinéed',
   'Carne': 'Beef', 'Cerdo': 'Pork', 'Pollo': 'Chicken', 'Revoltillo': 'Scrambled eggs', 'Sin pollo': 'No chicken', 'Con pollo': 'With chicken', 'Huevos fritos': 'Fried eggs', 'Salmón ahumado': 'Smoked salmon',
@@ -56,8 +56,8 @@ window.TFC_EN = {
   'st.eyebrow': 'Three stations, one food court',
   'st.title': 'What are you craving today?',
   'st.criollo': 'Rice, stews and proteins that rotate every day, criollo sides and breakfast to start your shift strong.',
-  'st.pizza': 'Five pizzas, 10" personal or 16" large, on regular or cauliflower crust. From classic cheese to the Meat Lover.',
-  'st.mexTitle': 'Tacos &amp; Mexican',
+  'st.pizza': 'Five pizzas, 10" personal or 16" large. From classic cheese to the Meat Lover.',
+  'st.mexTitle': 'Mexican',
   'st.mex': 'Beef, pork or chicken tacos, burritos, quesadillas, nachos, loaded potato and the Mex Burger.',
   'st.see': 'See menu →',
   'menu.eyebrow': 'Our menu',
@@ -145,7 +145,7 @@ window.TFC_EN = {
   'c.title': 'Get a quote for your event',
   'c.lead': 'Criollo trays, pizzas, a taco bar or a mix of all three. Tell us the details and we send a quote within one business day.',
   'c.noteT': 'Please book ahead.',
-  'c.note': 'We take requests at least <b data-lead>3</b> days in advance and for <b data-min-guests>10</b> people or more. Inside Metro Medical Center we can deliver to any floor.',
+  'c.note': 'We take requests at least <b data-lead>48</b> hours before the service time. Inside Metro Medical Center we can deliver to any floor.',
   'c.f1': 'Contact',
   'c.org': 'Department / company <span class="hint">(optional)</span>',
   'c.pref': 'How should we contact you?',

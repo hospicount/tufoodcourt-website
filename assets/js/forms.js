@@ -214,7 +214,7 @@
     const live = form.querySelector('[data-cart-live]');
     function announce() {
       form.querySelector('[data-cart-count]').textContent = count();
-      if (live) live.textContent = `${count()} ${L('artículos en tu pedido', 'items in your order')}`;
+      if (live) { const n = count(); live.textContent = `${n} ${n === 1 ? L('artículo', 'item') : L('artículos', 'items')} ${L('en tu pedido', 'in your order')}`; }
     }
 
     function add(id) {
@@ -238,7 +238,7 @@
     function showToast(it) {
       if (!toast) return;
       const needsChoice = (it.options || []).length > 0;
-      toast.innerHTML = `<span>✓ ${esc(tr(it.name))} · ${count()} ${L('art.', 'items')}</span>
+      toast.innerHTML = `<span>✓ ${esc(tr(it.name))} · ${count()} ${L('art.', count() === 1 ? 'item' : 'items')}</span>
         <button type="button" data-toast-go>${needsChoice ? L('Elegir opciones', 'Choose options') : L('Ver pedido', 'View order')}</button>`;
       toast.hidden = false;
       toast.querySelector('[data-toast-go]').addEventListener('click', () => {
@@ -485,13 +485,31 @@
   // =====================================================================
   function initCatering(form) {
     const date = form.querySelector('[name=fecha_evento]');
-    date.min = todayISO(C.cateringLeadDays);
-    const guests = form.querySelector('[name=invitados]');
-    guests.min = C.cateringMinGuests;
-    // The notice text is re-rendered on language toggle, so re-bind the numbers each time.
+    const time = form.querySelector('[name=hora]');
+    const leadHours = Number(C.cateringLeadHours) || 0;
+    const earliest = () => new Date(Date.now() + leadHours * 3600 * 1000);
+    const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    date.min = isoOf(earliest());
+    // The lead time applies to the service date AND time: a request for the earliest allowed day
+    // must still be at least `leadHours` ahead of the chosen service hour.
+    const checkLead = () => {
+      time.setCustomValidity('');
+      if (!date.value || !time.value) return;
+      const [h, m] = time.value.split(':').map(Number);
+      const service = parseISO(date.value);
+      service.setHours(h || 0, m || 0, 0, 0);
+      if (Number.isNaN(service.getTime())) return;
+      if (service < earliest()) {
+        time.setCustomValidity(L(
+          `Necesitamos al menos ${leadHours} horas de anticipación. Escoge otra fecha u hora de servicio.`,
+          `We need at least ${leadHours} hours' notice. Choose another service date or time.`));
+      }
+    };
+    ['change', 'input'].forEach((ev) => { date.addEventListener(ev, checkLead); time.addEventListener(ev, checkLead); });
+    form.addEventListener('submit', checkLead); // registered before wireSubmit's handler, so it runs first
+    // The notice text is re-rendered on language toggle, so re-bind the number each time.
     const bindNumbers = () => {
-      document.querySelectorAll('[data-lead]').forEach((el) => { el.textContent = C.cateringLeadDays; });
-      document.querySelectorAll('[data-min-guests]').forEach((el) => { el.textContent = C.cateringMinGuests; });
+      document.querySelectorAll('[data-lead]').forEach((el) => { el.textContent = leadHours; });
     };
     bindNumbers();
     document.addEventListener('tfc:lang', bindNumbers);

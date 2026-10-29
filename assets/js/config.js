@@ -47,4 +47,12 @@ window.TFC_CONFIG = {
 
   // Catering: how many hours before the service time a request must arrive (48 = two days). No minimum headcount.
   cateringLeadHours: 48,
+
+  // "Hoy en la línea criolla": a Google Sheet the owner edits (one row per day, see README). Share the sheet as
+  // "Anyone with the link → Viewer" (never Editor) and paste the long ID from its URL
+  // (docs.google.com/spreadsheets/d/<ID>/edit). The ID is public here, so EVERY tab of that file is public:
+  // keep nothing but the menu in it. Empty = feature off. criolloSheetTab is optional (empty = first tab).
+  criolloSheetId: '1XlkcwBumvJUcfANCLBRleZe83wKtoDwrkjED5xDRWIY', // «Menú criollo — Tu Food Court» in the admin@tufoodcourtpr.com Drive
+  criolloSheetTab: '',
+  timeZone: 'America/Puerto_Rico', // "today" is decided in Puerto Rico time, whatever the phone's clock says
 };

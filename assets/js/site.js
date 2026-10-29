@@ -254,12 +254,14 @@
       <div class="menu-tabs">${tabs}</div>
       <div class="menu-panel panel-${s.color}">
         <p class="menu-tagline">${esc(TFC.pick(s.tagline))}</p>
+        ${s.id === 'criollo' ? '<div class="criollo-today" data-criollo-today hidden></div>' : ''}
         <div class="menu-sections">${sections}</div>
       </div>`;
     root.querySelectorAll('.menu-tab').forEach((b) => b.addEventListener('click', () => {
       root.dataset.active = b.dataset.station; renderMenu();
       root.querySelector(`[data-station="${b.dataset.station}"]`).focus();
     }));
+    document.dispatchEvent(new CustomEvent('tfc:menu-rendered')); // criollo.js fills "hoy en la línea" if a sheet is configured
   }
   document.addEventListener('tfc:lang', renderMenu);
 

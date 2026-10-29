@@ -197,6 +197,7 @@
         <div class="menu-tabs small">${stations.map((x) => `
           <button type="button" class="menu-tab tab-${x.color}" aria-pressed="${x.id === station}" data-station="${x.id}">${esc(TFC.pick(x.station))}</button>`).join('')}
         </div>
+        ${station === 'criollo' ? '<div class="criollo-today compact" data-criollo-today hidden></div>' : ''}
         <div class="pick-list">${s.sections.map((sec) => sec.items.filter((i) => i.orderable).map((it) => `
           <button type="button" class="pick-item" data-add="${it.id}" aria-label="${L('Añadir', 'Add')} ${esc(tr(it.name))}">
             <span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
@@ -208,6 +209,7 @@
         picker.querySelector(`[data-station="${station}"]`).focus();
       }));
       picker.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => add(b.dataset.add)));
+      document.dispatchEvent(new CustomEvent('tfc:menu-rendered'));
     }
 
     function count() { return cart.reduce((n, l) => n + l.qty, 0); }

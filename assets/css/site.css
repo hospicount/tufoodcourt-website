@@ -192,6 +192,19 @@ p { margin: 0 0 1em; }
 .mi-name { display: block; font-weight: 800; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .mi-desc { display: block; font-size: .92rem; color: var(--muted); }
 .menu-groups { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+/* "Hoy en la línea criolla" — filled by criollo.js from the owner's Google Sheet */
+.criollo-today { background: var(--green-soft); border-left: 6px solid var(--amber); border-radius: var(--radius-sm); padding: 14px 16px; margin: 0 0 22px; }
+.criollo-today[hidden] { display: none; }
+.criollo-today.compact { margin: 0 0 12px; padding: 12px 14px; }
+.today-title { margin: 0 0 8px; font-weight: 900; color: var(--green); letter-spacing: .5px; text-transform: uppercase; font-size: .85rem; }
+.today-date { display: block; text-transform: none; letter-spacing: 0; font-weight: 700; color: var(--muted); font-size: .9rem; }
+.today-list { margin: 0; display: grid; gap: 6px 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.today-list div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.today-list dt { font-size: .78rem; font-weight: 900; text-transform: uppercase; letter-spacing: .6px; color: var(--red-deep); }
+.today-list dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.today-foot { margin: 10px 0 0; font-size: .9rem; color: var(--muted); font-weight: 700; }
+.today-foot .var { white-space: nowrap; }
+.criollo-today.compact .today-list { grid-template-columns: 1fr; gap: 4px; }
 .menu-group h4 { font-family: var(--font-body); font-weight: 900; font-size: .8rem; letter-spacing: 1.3px; text-transform: uppercase; color: var(--red-deep); margin-bottom: .4em; }
 .menu-group ul { margin: 0; padding-left: 1.1em; font-size: .95rem; }
 .menu-group li { margin-bottom: 2px; }

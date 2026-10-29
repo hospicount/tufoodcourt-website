@@ -35,7 +35,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261029d`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261029e`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash
@@ -54,3 +54,21 @@ for n,p in [('pedidos','/pedidos/?src=qr'),('delivery','/delivery/?src=qr'),('ca
     q.save(f'assets/img/qr/qr-{n}.png', scale=24, border=2, dark='#004F39', light='#FFFFFF')
 "
 ```
+
+## Menú criollo del día (Google Sheet)
+
+La pestaña **Criollo** del menú y el formulario de pedidos muestran «Hoy en la línea criolla» leyendo una hoja de Google que mantiene el dueño: **«Menú criollo — Tu Food Court»** en el Drive de admin@tufoodcourtpr.com (ID en `criolloSheetId`, `assets/js/config.js`). Plantilla por si hay que recrearla: `tools/menu-criollo-plantilla.xlsx` (pestaña «Menú» + pestaña «Instrucciones»); al subirla a Drive hay que abrirla y usar Archivo → Guardar como hoja de cálculo de Google (un .xlsx sin convertir no lo puede leer el sitio).
+
+- **Una fila por día.** En la columna «Día»:
+  - `Lunes` … `Sábado` (solo el nombre) = rotación fija, se repite cada semana. **Cada nombre de día una sola vez**; si hay dos filas «Lunes», se usa la de más abajo.
+  - Una fecha (`2026-11-09`, o con el día delante: `Lunes 2026-11-09`, `Lunes 9`, `Lunes 9 de noviembre`) = **solo ese día**. Así se prepara toda una semana o un mes por adelantado: una fila por fecha. La fecha manda sobre la rotación; las fechas pasadas se pueden borrar o dejar.
+  - `Hoy` = fila de respaldo: solo se usa cuando no hay fila para ese día (sirve para una hoja de una sola fila que se sobrescribe a diario). Para un especial de hoy, usa la fecha de hoy.
+  - Escribe las fechas como `2026-11-09` (año-mes-día); `11/9/2026` también vale. La columna está en formato de texto a propósito.
+  - Domingo (cerrado según `schedule`): solo se muestra una fila con fecha explícita.
+- El sitio escoge la fila en hora de Puerto Rico al mostrar la página (no al cargar la hoja), y en el formulario de pedidos muestra la fila **de la fecha que el cliente escogió** para su pedido.
+- Las demás columnas son libres (el título de la columna es la etiqueta; vacío = no se muestra; se pueden renombrar o añadir). Sin precios: el plato sigue siendo Regular / Combo según `menu.js`. La fila de títulos (Día, Arroz…) tiene que existir; una fila de título encima se ignora si la fila «Día» sigue ahí.
+- **Privacidad / seguridad**: el ID de la hoja es público (va en `config.js`), así que **todas las pestañas de ese archivo son públicas**. Usa una hoja dedicada SOLO al menú; nunca guardes costos, suplidores ni datos de empleados ahí. Comparte como **Lector**, nunca como Editor.
+- **Conexión**: la hoja se comparte como «Cualquier persona con el enlace → Lector». El sitio la lee directo de `docs.google.com/spreadsheets/d/<ID>/gviz/tq?tqx=out:csv&headers=1` (primera pestaña; `criolloSheetTab` para otra). Sin hoja o sin acceso, el sitio simplemente no muestra el bloque y deja un aviso en la consola.
+- **Comprobar la conexión** (en una ventana de incógnito): abre `https://docs.google.com/spreadsheets/d/<ID>/gviz/tq?tqx=out:csv&headers=1`. Debe bajar un CSV cuya primera línea son los títulos (Día, Arroz, Guiso…). Si aparece la pantalla de inicio de sesión de Google, la hoja no está compartida con el enlace.
+- Vista previa sin hoja: en la consola del navegador, `TFC.criollo.applyCSV('Día,Arroz,Guiso\nHoy,Arroz con gandules,Habichuelas')`.
+

@@ -24,7 +24,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; overflow-x: clip; } /* clip (not hidden) keeps sticky/anchors working and stops phones from widening the page when something overflows */
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -181,10 +181,14 @@ p { margin: 0 0 1em; }
 .menu-note { font-size: .95rem; color: var(--muted); }
 .menu-items { list-style: none; margin: 0; padding: 0; }
 .menu-items li { padding: 10px 0; border-bottom: 1px solid #f1e8da; }
-.mi-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.mi-price { font-weight: 900; color: var(--green); white-space: nowrap; font-size: .95rem; }
+/* Name and price share a line when they fit; a long multi-variant price (e.g. "Regular $12.99 · Combo $15.99")
+   drops to its own right-aligned line and wraps between variants instead of widening the page on phones. */
+.mi-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; }
+.mi-price { font-weight: 900; color: var(--green); font-size: .95rem; text-align: right; margin-left: auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.mi-price .var { white-space: nowrap; }
+.mi-price .sep { color: var(--muted); font-weight: 700; }
 .panel-red .mi-price { color: var(--red-deep); }
-.mi-name { display: block; font-weight: 800; }
+.mi-name { display: block; font-weight: 800; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .mi-desc { display: block; font-size: .92rem; color: var(--muted); }
 .menu-groups { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
 .menu-group h4 { font-family: var(--font-body); font-weight: 900; font-size: .8rem; letter-spacing: 1.3px; text-transform: uppercase; color: var(--red-deep); margin-bottom: .4em; }

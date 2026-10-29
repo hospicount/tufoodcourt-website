@@ -42,6 +42,11 @@
     if (it.priceBy) return Object.entries(it.prices).map(([k, v]) => `${TFC.tr(k)} ${TFC.money(adjust(v))}`).join(' · ');
     return it.price == null ? '' : TFC.money(adjust(it.price));
   };
+  // Same label as HTML: each variant is an unbreakable span so long labels wrap between variants on phones.
+  TFC.priceHtml = (it) => {
+    if (it.priceBy) return Object.entries(it.prices).map(([k, v]) => `<span class="var">${esc(TFC.tr(k))} ${TFC.money(adjust(v))}</span>`).join(' <span class="sep">·</span> ');
+    return it.price == null ? '' : TFC.money(adjust(it.price));
+  };
 
   // Spanish lives in the HTML; English in TFC_EN keyed by data-i18n. Originals are cached so toggling back works.
   function applyLang() {
@@ -243,7 +248,7 @@
         ${sec.groups ? `<div class="menu-groups">${sec.groups.map((g) => `
           <div class="menu-group"><h4>${esc(TFC.pick(g.label))}</h4><ul>${g.list.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>` : `
         <ul class="menu-items">${sec.items.map((it) => `
-          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}</span><span class="mi-price">${esc(TFC.priceLabel(it))}</span></div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
+          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}</span><span class="mi-price">${TFC.priceHtml(it)}</span></div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
       </section>`).join('');
     root.innerHTML = `
       <div class="menu-tabs">${tabs}</div>

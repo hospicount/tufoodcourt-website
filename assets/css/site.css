@@ -180,6 +180,7 @@ p { margin: 0 0 1em; }
 .panel-red .menu-section h3 { color: var(--red-deep); }
 .panel-amber .menu-section h3 { color: var(--red-deep); }
 .menu-note { font-size: .95rem; color: var(--muted); }
+.menu-loading, .menu-empty { color: var(--muted); font-size: .95rem; margin: 6px 0; min-height: 2.5em; } /* while prices.js reads the sheet / a station the owner emptied */
 .menu-items { list-style: none; margin: 0; padding: 0; }
 .menu-items li { padding: 10px 0; border-bottom: 1px solid #f1e8da; }
 /* Name and price share a line when they fit; a long multi-variant price (e.g. "Regular $12.99 · Combo $15.99")
@@ -327,6 +328,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 .cart-title { font-family: var(--font-body); font-weight: 900; font-size: .9rem; letter-spacing: 1px; text-transform: uppercase; color: var(--green); margin: 0 0 10px; display: flex; justify-content: space-between; outline: none; }
 .cart-count { background: var(--red); color: #fff; border-radius: 999px; padding: 0 .6em; }
 .cart-empty { color: var(--muted); font-size: .95rem; margin: 6px 0; }
+.cart-notice { margin: 0 0 10px; }
 .cart-line { background: var(--paper); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
 .cart-line.flash { animation: flash .8s ease; }
 @keyframes flash { from { box-shadow: 0 0 0 3px var(--amber); } to { box-shadow: 0 2px 8px rgba(0,0,0,.05); } }

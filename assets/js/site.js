@@ -34,17 +34,23 @@
   TFC.money = (n) => (n == null ? '' : '$' + (Number.isInteger(n) ? String(n) : n.toFixed(2)));
   // Unit price for an item with the chosen options: number, null = not priced yet, undefined = option not chosen yet.
   TFC.price = (it, opts) => {
-    if (it.priceBy) { const v = opts && opts[it.priceBy]; if (!v) return undefined; const p = it.prices[v]; return p == null ? null : adjust(p); }
+    if (it.priceBy) {
+      const v = opts && opts[it.priceBy];
+      if (!v || !Object.prototype.hasOwnProperty.call(it.prices || {}, v)) return undefined; // not chosen, or no longer offered (prices sheet)
+      const p = it.prices[v]; return p == null ? null : adjust(p);
+    }
     return it.price == null ? null : adjust(it.price);
   };
-  // Menu label: "$9", or per-option "10\" $9 · 16\" $18"; '' when unpriced.
+  // Menu label: "$9", or per-option "10\" $9 · 16\" $18"; '' when unpriced. An option without a price (sheet says
+  // «mostrador») is left out of the label; the cart line says "precio en mostrador" once that option is chosen.
+  const priced = (it) => Object.entries(it.prices || {}).filter(([, v]) => v != null);
   TFC.priceLabel = (it) => {
-    if (it.priceBy) return Object.entries(it.prices).map(([k, v]) => `${TFC.tr(k)} ${TFC.money(adjust(v))}`).join(' · ');
+    if (it.priceBy) return priced(it).map(([k, v]) => `${TFC.tr(k)} ${TFC.money(adjust(v))}`).join(' · ');
     return it.price == null ? '' : TFC.money(adjust(it.price));
   };
   // Same label as HTML: each variant is an unbreakable span so long labels wrap between variants on phones.
   TFC.priceHtml = (it) => {
-    if (it.priceBy) return Object.entries(it.prices).map(([k, v]) => `<span class="var">${esc(TFC.tr(k))} ${TFC.money(adjust(v))}</span>`).join(' <span class="sep">·</span> ');
+    if (it.priceBy) return priced(it).map(([k, v]) => `<span class="var">${esc(TFC.tr(k))} ${TFC.money(adjust(v))}</span>`).join(' <span class="sep">·</span> ');
     return it.price == null ? '' : TFC.money(adjust(it.price));
   };
 
@@ -230,9 +236,15 @@
   }
 
   // ---------- menu (home page) ----------
+  // Items the owner hid in the prices sheet (Disponible = No) carry available === false; empty sections are skipped.
+  TFC.visibleItems = (sec) => (sec.items || []).filter((it) => it.available !== false);
   function renderMenu() {
     const root = document.querySelector('[data-menu]');
     if (!root) return;
+    if (TFC.pricesPending) { // prices.js is still reading the owner's sheet (1.5 s at most); it re-renders when done
+      root.innerHTML = `<p class="menu-loading" role="status">${lang === 'en' ? 'Loading the menu…' : 'Cargando el menú…'}</p>`;
+      return;
+    }
     const stations = window.TFC_MENU.filter((s) => !s.hideOnMenu);
     const active = root.dataset.active || stations[0].id;
     root.dataset.active = active;
@@ -241,13 +253,13 @@
         ${esc(TFC.pick(s.station))}
       </button>`).join('');
     const s = stations.find((x) => x.id === active);
-    const sections = s.sections.map((sec) => `
+    const sections = s.sections.filter((sec) => sec.groups || TFC.visibleItems(sec).length).map((sec) => `
       <section class="menu-section">
         <h3>${esc(TFC.pick(sec.title))}</h3>
         ${sec.note ? `<p class="menu-note">${esc(TFC.pick(sec.note))}</p>` : ''}
         ${sec.groups ? `<div class="menu-groups">${sec.groups.map((g) => `
           <div class="menu-group"><h4>${esc(TFC.pick(g.label))}</h4><ul>${g.list.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>` : `
-        <ul class="menu-items">${sec.items.map((it) => `
+        <ul class="menu-items">${TFC.visibleItems(sec).map((it) => `
           <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}</span><span class="mi-price">${TFC.priceHtml(it)}</span></div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
       </section>`).join('');
     root.innerHTML = `
@@ -255,7 +267,7 @@
       <div class="menu-panel panel-${s.color}">
         <p class="menu-tagline">${esc(TFC.pick(s.tagline))}</p>
         ${s.id === 'criollo' ? '<div class="criollo-today" data-criollo-today hidden></div>' : ''}
-        <div class="menu-sections">${sections}</div>
+        <div class="menu-sections">${sections || `<p class="menu-empty">${lang === 'en' ? 'No dishes available right now.' : 'Sin platos disponibles por ahora.'}</p>`}</div>
       </div>`;
     root.querySelectorAll('.menu-tab').forEach((b) => b.addEventListener('click', () => {
       root.dataset.active = b.dataset.station; renderMenu();
@@ -264,6 +276,13 @@
     document.dispatchEvent(new CustomEvent('tfc:menu-rendered')); // criollo.js fills "hoy en la línea" if a sheet is configured
   }
   document.addEventListener('tfc:lang', renderMenu);
+  document.addEventListener('tfc:prices', () => { // sheet prices arrived or changed (prices.js): redraw, keep keyboard focus on the tab
+    const root = document.querySelector('[data-menu]');
+    const a = document.activeElement;
+    const station = root && a && root.contains(a) && a.dataset.station;
+    renderMenu();
+    if (station) { const b = root.querySelector(`[data-station="${station}"]`); if (b) b.focus({ preventScroll: true }); }
+  });
 
   // ---------- boot ----------
   header();

@@ -211,7 +211,7 @@ window.TFC_EN = {
     <p>Tu Food Court LLC ("Tu Food Court", "we") operates the Tu Food Court dining hall in the Metro Medical Center food court, Bayamón, Puerto Rico, and the website tufoodcourtpr.com.</p>
     <h2>What we collect</h2>
     <p>We only collect the information you voluntarily send through the <strong>delivery</strong> and <strong>catering</strong> forms: name, phone, email, employee number and department (delivery), delivery or event location, date and time, the dishes or services requested and any notes you write. The site uses no tracking cookies or third-party analytics. Your language preference — and, if you tick "remember my details", your delivery contact details — are stored only in your own browser and never sent anywhere until you submit a form.</p>
-    <p>Like most websites, the pages themselves are served by GitHub Pages, the typefaces by Google Fonts and the daily criollo menu from a Google Sheet; those providers receive your IP address as part of the normal page load.</p>
+    <p>Like most websites, the pages themselves are served by GitHub Pages, the typefaces by Google Fonts and the daily criollo menu and prices from a Google Sheet; those providers receive your IP address as part of the normal page load.</p>
     <h2>How we use it</h2>
     <ul>
       <li>To prepare, confirm and deliver your delivery order.</li>

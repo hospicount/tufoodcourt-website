@@ -36,9 +36,10 @@ window.TFC_CONFIG = {
   orderLeadMinutes: 30,           // today's windows ending sooner than this are greyed out
   maxAdvanceDays: 14,             // how far ahead an order can be scheduled
   pickupEmployeesOnly: false,     // true = pickup also requires MMC employee details
-  // Prices come from assets/js/menu.js (sheet prices, before IVU). Owner rule (2026-10-28): add 3.8% to every
-  // listed price, then round UP to the next .99 (e.g. $11.99 → $12.45 → $12.99). Set percent to 0 and rounding
-  // to 'none' to show the sheet prices exactly as listed.
+  // Base prices come from assets/js/menu.js, overridden by the «Precios» tab of the owner's Google Sheet (see below;
+  // before IVU). Owner rule (2026-10-28): add 3.8% to every base price, then round UP to the next .99
+  // (e.g. $11.99 → $12.45 → $12.99). Set percent to 0 and rounding to 'none' to show the base prices exactly as listed.
+  // If you change this rule, also update the «Precio en el sitio» formula in the sheet (it only previews the rule).
   priceAdjustPercent: 3.8,
   priceRounding: 'up99', // 'up99' | 'none'
   paymentOptions: ['ATH Móvil', 'Tarjeta de crédito', 'Efectivo'], // Spanish values; EN display in i18n.js TFC_EN_VALUES
@@ -54,5 +55,10 @@ window.TFC_CONFIG = {
   // keep nothing but the menu in it. Empty = feature off. criolloSheetTab is optional (empty = first tab).
   criolloSheetId: '1XlkcwBumvJUcfANCLBRleZe83wKtoDwrkjED5xDRWIY', // «Menú criollo — Tu Food Court» in the admin@tufoodcourtpr.com Drive
   criolloSheetTab: '',
+  // Prices & availability: the «Precios» tab of that same sheet (one row per item, or per option when the price depends
+  // on it; see README). «Precio base» = before the rule above, with a dot decimal; blank = the price in menu.js;
+  // 0 = counter price; «Disponible» = No hides the item (or that option). Empty id = feature off (menu.js prices only).
+  pricesSheetId: '1XlkcwBumvJUcfANCLBRleZe83wKtoDwrkjED5xDRWIY',
+  pricesSheetTab: 'Precios',
   timeZone: 'America/Puerto_Rico', // "today" is decided in Puerto Rico time, whatever the phone's clock says
 };

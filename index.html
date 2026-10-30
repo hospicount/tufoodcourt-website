@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Bitter:ital,wght@1,700;1,800&family=Nunito+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/site.css?v=20261029e">
+  <link rel="stylesheet" href="/assets/css/site.css?v=20261029f">
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"Restaurant","name":"Tu Food Court","url":"https://tufoodcourtpr.com/",
    "servesCuisine":["Puerto Rican","Pizza","Mexican"],"image":"https://tufoodcourtpr.com/assets/img/og-image.jpg",
@@ -178,15 +178,17 @@
 
   <footer class="site-footer" data-site-footer></footer>
 
-  <script src="/assets/js/config.js?v=20261029e"></script>
-  <script src="/assets/js/menu.js?v=20261029e"></script>
-  <script src="/assets/js/i18n.js?v=20261029e"></script>
-  <script src="/assets/js/site.js?v=20261029e"></script>
-  <script src="/assets/js/criollo.js?v=20261029e"></script>
+  <script src="/assets/js/config.js?v=20261029f"></script>
+  <script src="/assets/js/menu.js?v=20261029f"></script>
+  <script src="/assets/js/prices.js?v=20261029f"></script>
+  <script src="/assets/js/i18n.js?v=20261029f"></script>
+  <script src="/assets/js/site.js?v=20261029f"></script>
+  <script src="/assets/js/criollo.js?v=20261029f"></script>
   <script>
     document.querySelectorAll('[data-station-link]').forEach(function (a) {
       a.addEventListener('click', function () {
         var m = document.querySelector('[data-menu]');
+        m.dataset.active = a.dataset.stationLink; // honoured by the next render even while "Cargando el menú…" is showing
         var b = m.querySelector('[data-station="' + a.dataset.stationLink + '"]');
         if (b) b.click();
       });

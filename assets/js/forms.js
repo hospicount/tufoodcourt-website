@@ -187,23 +187,34 @@
     let station = 'criollo';
     let toastTimer = null;
 
-    const allItems = {};
-    window.TFC_MENU.forEach((s) => s.sections.forEach((sec) => sec.items.forEach((it) => { if (it.orderable) allItems[it.id] = { ...it, station: s }; })));
+    // Hidden items (prices sheet: Disponible = No) stay indexed; the 'tfc:prices' handler below removes them from the cart.
+    let allItems = {};
+    let cartNotice = ''; // one-line status above the cart after the sheet changed something the customer had chosen
+    function indexItems() {
+      allItems = {};
+      window.TFC_MENU.forEach((s) => s.sections.forEach((sec) => sec.items.forEach((it) => { if (it.orderable) allItems[it.id] = { ...it, station: s }; })));
+    }
+    indexItems();
 
     function renderPicker() {
+      if (TFC.pricesPending) { // prices.js is still reading the owner's sheet (1.5 s at most); it re-renders when done
+        picker.innerHTML = `<p class="menu-loading" role="status">${L('Cargando el menú…', 'Loading the menu…')}</p>`;
+        return;
+      }
       const stations = window.TFC_MENU;
       const s = stations.find((x) => x.id === station);
+      const pickable = (sec) => sec.items.filter((i) => i.orderable && i.available !== false);
+      const list = s.sections.map((sec) => pickable(sec).map((it) => `
+          <button type="button" class="pick-item" data-add="${it.id}" aria-label="${L('Añadir', 'Add')} ${esc(tr(it.name))}">
+            <span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
+            <span class="pick-right"><span class="mi-price">${TFC.priceHtml(it) || esc(L('precio en mostrador', 'counter price'))}</span><span class="pick-plus" aria-hidden="true">+</span></span>
+          </button>`).join('')).join('');
       picker.innerHTML = `
         <div class="menu-tabs small">${stations.map((x) => `
           <button type="button" class="menu-tab tab-${x.color}" aria-pressed="${x.id === station}" data-station="${x.id}">${esc(TFC.pick(x.station))}</button>`).join('')}
         </div>
         ${station === 'criollo' ? '<div class="criollo-today compact" data-criollo-today hidden></div>' : ''}
-        <div class="pick-list">${s.sections.map((sec) => sec.items.filter((i) => i.orderable).map((it) => `
-          <button type="button" class="pick-item" data-add="${it.id}" aria-label="${L('Añadir', 'Add')} ${esc(tr(it.name))}">
-            <span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
-            <span class="pick-right"><span class="mi-price">${TFC.priceHtml(it) || esc(L('precio en mostrador', 'counter price'))}</span><span class="pick-plus" aria-hidden="true">+</span></span>
-          </button>`).join('')).join('')}
-        </div>`;
+        <div class="pick-list">${list || `<p class="menu-empty">${L('Sin platos disponibles por ahora.', 'No dishes available right now.')}</p>`}</div>`;
       picker.querySelectorAll('[data-station]').forEach((b) => b.addEventListener('click', () => {
         station = b.dataset.station; renderPicker();
         picker.querySelector(`[data-station="${station}"]`).focus();
@@ -221,6 +232,7 @@
 
     function add(id) {
       const it = allItems[id];
+      cartNotice = '';
       let line = (it.options || []).length ? null : cart.find((l) => l.id === id); // same simple item → bump qty
       if (line) line.qty = Math.min(99, line.qty + 1);
       else {
@@ -255,12 +267,13 @@
 
     function renderCart() {
       announce();
+      const noticeHtml = cartNotice ? `<p class="field-error cart-notice" role="status">${esc(cartNotice)}</p>` : '';
       if (!cart.length) {
-        list.innerHTML = `<p class="cart-empty">${L('Aún no has añadido nada. Toca un plato para añadirlo.', 'Nothing added yet. Tap a dish to add it.')}</p>`;
+        list.innerHTML = `${noticeHtml}<p class="cart-empty">${L('Aún no has añadido nada. Toca un plato para añadirlo.', 'Nothing added yet. Tap a dish to add it.')}</p>`;
         refreshTotals();
         return;
       }
-      list.innerHTML = cart.map((l) => {
+      list.innerHTML = noticeHtml + cart.map((l) => {
         const it = allItems[l.id];
         const name = esc(tr(l.name));
         return `
@@ -320,7 +333,7 @@
       const t = totals();
       subtotal.hidden = false;
       subtotal.innerHTML = `<span>${L('Subtotal', 'Subtotal')}</span><strong>${TFC.money(t.sum)}</strong>
-        <small>${L('IVU no incluido', 'IVU (sales tax) not included')}${t.unpriced ? L(' · bebidas al precio del mostrador', ' · drinks at counter price') : ''}${t.pending ? L(' · elige las opciones que faltan', ' · choose the missing options') : ''}</small>`;
+        <small>${L('IVU no incluido', 'IVU (sales tax) not included')}${t.unpriced ? L(' · hay artículos al precio del mostrador', ' · some items at counter price') : ''}${t.pending ? L(' · elige las opciones que faltan', ' · choose the missing options') : ''}</small>`;
     }
     function lineText(l, withNote) {
       const opts = Object.values(l.opts).filter(Boolean).join(', ');
@@ -400,6 +413,33 @@
     };
     renderStatic();
     document.addEventListener('tfc:lang', () => { renderStatic(); renderPicker(); renderCart(); });
+    // Sheet prices arrived or changed (prices.js): re-index, drop what the owner hid, clear options no longer offered,
+    // redraw the picker (keeping its scroll and focus) and the cart, and tell the customer what changed.
+    document.addEventListener('tfc:prices', () => {
+      const before = cart.map((l) => linePrice(l));
+      indexItems();
+      const gone = [], cleared = [];
+      for (let i = cart.length - 1; i >= 0; i--) {
+        const l = cart[i], it = allItems[l.id];
+        if (!it || it.available === false) { gone.unshift(l); cart.splice(i, 1); continue; }
+        (it.options || []).forEach((o) => { if (l.opts[o.key] && !o.choices.includes(l.opts[o.key])) { l.opts[o.key] = ''; cleared.push(l); } });
+      }
+      const oldList = picker.querySelector('.pick-list');
+      const scrollTop = oldList ? oldList.scrollTop : 0;
+      const a = document.activeElement;
+      const focusSel = a && picker.contains(a) ? (a.dataset.add ? `[data-add="${a.dataset.add}"]` : a.dataset.station ? `[data-station="${a.dataset.station}"]` : '') : '';
+      renderPicker();
+      const newList = picker.querySelector('.pick-list');
+      if (newList) newList.scrollTop = scrollTop;
+      if (focusSel) { const el = picker.querySelector(focusSel); if (el) el.focus({ preventScroll: true }); }
+      const after = cart.map((l) => linePrice(l));
+      const repriced = !gone.length && !cleared.length && before.some((p, i) => p !== after[i]);
+      if (gone.length) cartNotice = L(`${gone.map((l) => tr(l.name)).join(', ')}: ya no está disponible y se quitó de tu pedido.`, `${gone.map((l) => tr(l.name)).join(', ')}: no longer available, removed from your order.`);
+      else if (cleared.length) cartNotice = L('Una opción de tu pedido ya no está disponible; elige otra.', 'An option in your order is no longer available; choose another.');
+      else if (repriced) cartNotice = L('Los precios se actualizaron; revisa tu pedido.', 'Prices were updated; please review your order.');
+      renderCart();
+      if (cartNotice && live) live.textContent = cartNotice;
+    });
 
     // ----- remember me (this phone only) -----
     const remember = form.querySelector('[name=recordar]');
@@ -429,8 +469,8 @@
         const when = `${fmtDate(f.fecha)} · ${f.ventana}`;
         const pickupPlace = L('Tu Food Court, food court de Metro Medical Center', 'Tu Food Court, Metro Medical Center food court');
         const t = totals();
-        const subtotalEs = `${TFC.money(t.sum)} sin IVU${t.unpriced ? ' (bebidas no incluidas)' : ''}`;
-        const subtotalEn = `${TFC.money(t.sum)} before IVU${t.unpriced ? ' (drinks not included)' : ''}`;
+        const subtotalEs = `${TFC.money(t.sum)} sin IVU${t.unpriced ? ' (sin los artículos a precio de mostrador)' : ''}`;
+        const subtotalEn = `${TFC.money(t.sum)} before IVU${t.unpriced ? ' (items at counter price not included)' : ''}`;
         const payload = {
           _subject: pickup
             ? `🥡 Recogido ${ref} — ${f.nombre} · ${shortDate} · ${f.ventana}`

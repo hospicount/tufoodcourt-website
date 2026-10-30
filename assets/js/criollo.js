@@ -24,7 +24,7 @@
       if (q) {
         if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
         else field += c;
-      } else if (c === '"') q = true;
+      } else if (c === '"' && field === '') q = true; // a quote mid-field (hand-typed `10"`) stays literal
       else if (c === ',') { row.push(field); field = ''; }
       else if (c === '\n' || c === '\r') {
         if (c === '\r' && text[i + 1] === '\n') i++;

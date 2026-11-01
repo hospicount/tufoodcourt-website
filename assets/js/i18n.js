@@ -13,6 +13,9 @@ window.TFC_EN_VALUES = {
   'Delivery a mi área (empleados MMC)': 'Delivery to my unit (MMC employees)', 'Recogido en el mostrador': 'Pickup at the counter',
   'Llamada': 'Phone call', 'Texto (SMS)': 'Text (SMS)', 'Teléfono': 'Phone call',
   'Lo antes posible': 'As soon as possible',
+  'Revoltillo con bacon o jamón': 'Scrambled eggs with bacon or ham', 'Tostada de aguacate': 'Avocado toast', 'Wrap cubano': 'Cuban wrap', 'Wrap de desayuno': 'Breakfast wrap',
+  'Yogurt con granola': 'Yogurt with granola', 'Ensalada de frutas': 'Fruit salad', 'Avena': 'Oatmeal', 'Plato criollo del día': 'Criollo plate of the day',
+  'Arroz blanco': 'White rice', 'Arroz guisado del día': 'Seasoned rice of the day', 'Guiso del día': 'Stew of the day', 'Batata': 'Sweet potato', 'Queso': 'Cheese', 'Flan de guava y queso': 'Guava and cheese flan',
   'Reunión / adiestramiento': 'Meeting / training', 'Celebración de staff': 'Staff celebration', 'Semana de reconocimiento': 'Appreciation week',
   'Cumpleaños / despedida': 'Birthday / farewell', 'Evento corporativo': 'Corporate event', 'Evento familiar / privado': 'Family / private event', 'Otro': 'Other',
   'Tacos / Mexicano': 'Taco bar', 'Desayuno': 'Breakfast', 'Aperitivos / picadera': 'Appetizers', 'Bebidas': 'Drinks',
@@ -72,7 +75,7 @@ window.TFC_EN = {
   'dl.s2t': 'We confirm',
   'dl.s2': 'We contact you with the total and an estimated time.',
   'dl.s3t': 'Receive and enjoy',
-  'dl.s3': 'Pay with ATH Móvil, card or cash on delivery.',
+  'dl.s3': 'Pay on delivery with',
   'dl.cta': 'Place a delivery order',
   'dl.soon': 'Not an MMC employee? Order for pickup at the counter — and soon on DoorDash and Uber Eats.',
   'qr.title': 'Scan to order',
@@ -205,13 +208,13 @@ window.TFC_EN = {
 
   // privacy
   'p.title': 'Privacy policy',
-  'p.lead': 'Last updated: October 29, 2026',
+  'p.lead': 'Last updated: November 1, 2026',
   'p.body': `
     <h2>Who we are</h2>
     <p>Tu Food Court LLC ("Tu Food Court", "we") operates the Tu Food Court dining hall in the Metro Medical Center food court, Bayamón, Puerto Rico, and the website tufoodcourtpr.com.</p>
     <h2>What we collect</h2>
     <p>We only collect the information you voluntarily send through the <strong>delivery</strong> and <strong>catering</strong> forms: name, phone, email, employee number and department (delivery), delivery or event location, date and time, the dishes or services requested and any notes you write. The site uses no tracking cookies or third-party analytics. Your language preference — and, if you tick "remember my details", your delivery contact details — are stored only in your own browser and never sent anywhere until you submit a form.</p>
-    <p>Like most websites, the pages themselves are served by GitHub Pages, the typefaces by Google Fonts and the daily criollo menu and prices from a Google Sheet; those providers receive your IP address as part of the normal page load.</p>
+    <p>Like most websites, the pages themselves are served by GitHub Pages and the daily criollo menu and prices from a Google Sheet; those providers receive your IP address as part of the normal page load.</p>
     <h2>How we use it</h2>
     <ul>
       <li>To prepare, confirm and deliver your delivery order.</li>

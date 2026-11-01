@@ -102,7 +102,7 @@
     el.innerHTML = `
       <div class="wrap header-inner">
         <a class="brand" href="/" aria-label="Tu Food Court — inicio" data-i18n-aria="nav.home">
-          <img src="/assets/img/logo-horiz-v1.png" alt="Tu Food Court" width="1297" height="571">
+          <img src="/assets/img/logo-horiz-v1.png" alt="Tu Food Court" width="360" height="158">
         </a>
         <nav class="nav" id="site-nav" aria-label="Principal" data-i18n-aria="nav.main">
           ${navLink('/#menu', 'nav.menu', 'Menú', false)}
@@ -120,11 +120,15 @@
       </div>`;
     const burger = el.querySelector('.nav-burger');
     const nav = el.querySelector('.nav');
+    const close = () => { nav.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); };
     burger.addEventListener('click', () => {
       const open = nav.classList.toggle('open');
       burger.setAttribute('aria-expanded', String(open));
+      if (open) nav.querySelector('a').focus(); // the links come before the burger in the page order
     });
-    nav.addEventListener('click', (e) => { if (e.target.closest('a')) { nav.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); } });
+    nav.addEventListener('click', (e) => { if (e.target.closest('a')) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && nav.classList.contains('open')) { close(); burger.focus(); } });
+    document.addEventListener('click', (e) => { if (nav.classList.contains('open') && !e.target.closest('.site-header')) close(); });
   }
   function footer() {
     const el = document.querySelector('[data-site-footer]');
@@ -195,9 +199,11 @@
       : `${groupLabel(g)} · ${lang === 'en' ? 'closed' : 'cerrado'}`);
   }
   function lastCallText() {
-    const parts = dayGroups().filter((g) => g.hours).map((g) =>
-      lang === 'en' ? `${groupLabel(g)} until ${fmt12(g.hours[1] - C.lastCallMinutesBeforeClose)}`
-        : `${groupLabel(g, true)} hasta las ${fmt12(g.hours[1] - C.lastCallMinutesBeforeClose)}`);
+    const parts = dayGroups().filter((g) => g.hours).map((g) => {
+      const t = g.hours[1] - C.lastCallMinutesBeforeClose;
+      if (lang === 'en') return `${groupLabel(g)} until ${fmt12(t)}`;
+      return `${groupLabel(g, true)} hasta ${Math.floor(t / 60) % 12 === 1 ? 'la' : 'las'} ${fmt12(t)}`;
+    });
     return lang === 'en'
       ? `Same-day orders: ${parts.join(', ')}. You can also schedule for another day.`
       : `Pedidos para el mismo día: ${parts.join(' y ')}. También puedes programar tu pedido para otro día.`;
@@ -241,7 +247,10 @@
   function renderMenu() {
     const root = document.querySelector('[data-menu]');
     if (!root) return;
-    if (TFC.pricesPending) { // prices.js is still reading the owner's sheet (1.5 s at most); it re-renders when done
+    // A link to a section below the menu (/#visitanos) needs the full-height menu in place when the browser scrolls.
+    const jump = location.hash.length > 1 && document.getElementById(location.hash.slice(1));
+    const below = jump && (root.compareDocumentPosition(jump) & Node.DOCUMENT_POSITION_FOLLOWING);
+    if (TFC.pricesPending && !below) { // prices.js is still reading the owner's sheet (1.5 s at most); it re-renders when done
       root.innerHTML = `<p class="menu-loading" role="status">${lang === 'en' ? 'Loading the menu…' : 'Cargando el menú…'}</p>`;
       return;
     }
@@ -260,7 +269,7 @@
         ${sec.groups ? `<div class="menu-groups">${sec.groups.map((g) => `
           <div class="menu-group"><h4>${esc(TFC.pick(g.label))}</h4><ul>${g.list.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>` : `
         <ul class="menu-items">${TFC.visibleItems(sec).map((it) => `
-          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}</span><span class="mi-price">${TFC.priceHtml(it)}</span></div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
+          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}</span><span class="mi-price">${TFC.priceHtml(it) || esc(lang === 'en' ? 'counter price' : 'precio en mostrador')}</span></div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
       </section>`).join('');
     root.innerHTML = `
       <div class="menu-tabs">${tabs}</div>

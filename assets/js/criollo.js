@@ -167,7 +167,7 @@
   }
 
   let sheet = null;   // { headers, rows, h } or null
-  let loadedAt = 0;
+  let lastAttempt = 0;
 
   // The order picker follows the date the customer picked for the order; everything else shows today.
   function dayFor(box, now) {
@@ -200,6 +200,7 @@
 
   async function load() {
     if (!id || !window.fetch || !window.AbortController) return;
+    lastAttempt = Date.now();
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     try {
@@ -207,8 +208,9 @@
       const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/gviz/tq?tqx=out:csv&headers=1${tab ? `&sheet=${encodeURIComponent(tab)}` : ''}`;
       const res = await fetch(url, { signal: ctrl.signal, credentials: 'omit', redirect: 'error' }); // a private sheet redirects to Google login: fail quietly
       if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 401 || res.status === 403 ? ' (¿la hoja está compartida con «cualquier persona con el enlace»?)' : ''));
-      loadedAt = Date.now();
-      setSheet(parseCSV(await res.text()));
+      const text = await res.text();
+      if (!text.trim() || /^\s*[<{]/.test(text)) throw new Error('respuesta no es CSV');
+      setSheet(parseCSV(text));
     } catch (e) {
       warn(e && e.message); // not shared, offline or slow network: the site just shows its normal criollo text
     } finally { clearTimeout(timer); }
@@ -219,7 +221,7 @@
 
   // Re-pick the day whenever something re-renders, the language flips, the order date changes,
   // or the page comes back to the foreground (a tab left open past midnight; refetch if the data is old).
-  const refresh = () => { if (id && loadedAt && Date.now() - loadedAt > 10 * 60 * 1000) load(); else fill(); };
+  const refresh = () => { fill(); if (id && Date.now() - lastAttempt > 10 * 60 * 1000) load(); };
   document.addEventListener('tfc:menu-rendered', fill);
   document.addEventListener('tfc:lang', fill);
   document.addEventListener('change', (e) => { if (e.target && e.target.type === 'date') fill(); });

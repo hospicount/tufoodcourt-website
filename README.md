@@ -18,7 +18,8 @@ Sitio estático (HTML/CSS/JS sin build) para **tufoodcourtpr.com**. Español por
 - **Platos (añadir, quitar, renombrar) y precios base de fábrica** → `assets/js/menu.js` (fuente: `MENU CON PRECIOS BAYAMON.xlsx`, precios sin IVU; `price` fijo o `priceBy` + `prices` cuando depende de una opción, p. ej. tamaño de pizza; `price: null` = «precio en mostrador», no suma al subtotal). El recargo del 3.8% y el redondeo hacia arriba a .99 se controlan con `priceAdjustPercent` / `priceRounding` en `config.js`; el sitio calcula el precio final a partir del precio base (de la hoja «Precios» si hay, si no de `menu.js`). Al añadir un plato en `menu.js`, añade también su fila **a mano** en la pestaña «Precios» (ver esa sección; reimportar el CSV borra los cambios del dueño).
 - **Textos en inglés** → `assets/js/i18n.js` (los textos en español viven en cada HTML)
 - **Colores y tipografía** → `assets/css/site.css` (verde `#004F39`, rojo-naranja `#DB461C`, ámbar `#F59924`, muestreados del logo oficial)
-- **Logos** → `assets/img/` (copiados de los assets de marca)
+- **Logos** → `assets/img/`. `logo-v1.png`, `logo-horiz-v1.png`, `pattern-tile.png` y los íconos están optimizados a PNG de 8 bits (`logo-horiz-v1.png` a 360 px, porque se muestra a 114 px). Los originales grandes siguen en los assets de marca.
+- **Tipografías** → `assets/fonts/`: subconjuntos latinos de Google Fonts (licencia en `assets/fonts/OFL.txt`) alojados aquí para no bloquear la carga con dos dominios externos. Las reglas `@font-face` están al inicio de `site.css`.
 - **QR** → `assets/img/qr/`. El que se imprime es `qr-pedidos.*` → `https://tufoodcourtpr.com/pedidos/?src=qr` (los pedidos llegan marcados `Origen: qr`). `qr-delivery.*` y `qr-catering.*` apuntan directo a cada formulario por si algún día quieres un QR distinto en el mostrador y en los pisos; hoy no se usan en el sitio.
 
 ## Cómo llegan los pedidos
@@ -36,7 +37,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261029f`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261101a`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash

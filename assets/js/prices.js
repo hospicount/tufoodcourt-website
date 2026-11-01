@@ -85,7 +85,7 @@
   }
   // «Disponible»: blank → undefined (shown); a cell that STARTS with a hide word → false; a show word → true;
   // anything else → NaN (shown, with a warning so the owner notices).
-  const HIDE = /^(no\b|n\b|agotad|oculto|oculta|sin\b|se acab|off\b|false|falso|0\b)/;
+  const HIDE = /^(no\b|n\b|agot|oculto|oculta|sin\b|se acab|se agot|off\b|false|falso|0\b)/;
   const SHOW = /^(si\b|yes\b|true|1\b|x\b|ok\b|disponible|activo|activa|on\b)/;
   function parseAvail(s) { s = norm(s); if (s === '') return undefined; if (HIDE.test(s)) return false; if (SHOW.test(s)) return true; return NaN; }
 
@@ -217,7 +217,9 @@
         if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 425 && res.status !== 429) { forget('HTTP ' + res.status + (res.status === 401 || res.status === 403 ? ' (¿la hoja está compartida con «cualquier persona con el enlace»?)' : '')); return; }
         throw new Error('HTTP ' + res.status);
       }
-      const entries = parseRows(parseCSV(await res.text()));
+      const text = await res.text();
+      if (!text.trim() || /^\s*[<{]/.test(text)) throw new Error('respuesta no es CSV'); // a Google glitch must not wipe good prices
+      const entries = parseRows(parseCSV(text));
       if (!entries) { forget('la pestaña «' + (tab || 'Precios') + '» no tiene la fila de títulos'); return; }
       commit(entries);
       writeCache(entries);

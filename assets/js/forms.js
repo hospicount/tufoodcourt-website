@@ -28,21 +28,26 @@
       return /^[a-z0-9-]{1,20}$/i.test(s) ? s.toLowerCase() : 'web';
     } catch (e) { return 'web'; }
   }
-  // Local calendar date (not UTC) so evening orders in Puerto Rico still see today's date.
+  // "Today" and "now" are Puerto Rico's (config timeZone), whatever time zone the phone is set to.
+  function prParts(at) {
+    const p = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: C.timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      .formatToParts(at || new Date()).forEach((x) => { p[x.type] = x.value; });
+    return p;
+  }
   function todayISO(offsetDays) {
-    const d = new Date();
-    d.setDate(d.getDate() + (offsetDays || 0));
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const p = prParts();
+    return new Date(Date.UTC(+p.year, +p.month - 1, +p.day + (offsetDays || 0))).toISOString().slice(0, 10);
   }
   function parseISO(iso) { const [y, m, d] = String(iso).split('-').map(Number); return new Date(y, m - 1, d); }
-  function fmtDate(iso) {
+  function fmtDate(iso, loc) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return iso || '';
-    return parseISO(iso).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return parseISO(iso).toLocaleDateString(loc || locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   }
-  function fmtTime(hhmm) {
+  function fmtTime(hhmm, loc) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || '');
     if (!m) return hhmm || '';
-    return new Date(2000, 0, 1, +m[1], +m[2]).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' });
+    return new Date(2000, 0, 1, +m[1], +m[2]).toLocaleTimeString(loc || locale(), { hour: 'numeric', minute: '2-digit' });
   }
   // Text that gets echoed into the customer's auto-reply: strip links and cap length so the relay can't be abused.
   function clean(s, max) { return String(s || '').replace(/https?:\/\/\S+|www\.\S+|\S+@\S+/gi, '').replace(/\s+/g, ' ').trim().slice(0, max); }
@@ -57,6 +62,7 @@
     if (v.typeMismatch && el.type === 'email') return L('Escribe un email válido.', 'Enter a valid email.');
     if (v.patternMismatch && el.type === 'tel') return L('Escribe un teléfono válido (ej. 787-000-0000).', 'Enter a valid phone number (e.g. 787-000-0000).');
     if (v.rangeUnderflow && el.type === 'date') return L(`Elige una fecha a partir del ${fmtDate(el.min)}.`, `Choose a date from ${fmtDate(el.min)} on.`);
+    if (v.rangeOverflow && el.type === 'date') return L(`Puedes programar hasta el ${fmtDate(el.max)}.`, `You can schedule up to ${fmtDate(el.max)}.`);
     if (v.rangeUnderflow) return L(`El mínimo es ${el.min}.`, `The minimum is ${el.min}.`);
     if (v.rangeOverflow) return L(`El máximo es ${el.max}.`, `The maximum is ${el.max}.`);
     if (v.stepMismatch || v.badInput) return L('Escribe un número entero.', 'Enter a whole number.');
@@ -67,15 +73,18 @@
     const flagged = new Set(); // one message per radio/checkbox group or cart line
     form.querySelectorAll('.field-error[data-dyn]').forEach((e) => e.remove()); // keep the static cart/stations messages
     form.querySelectorAll('[aria-invalid]').forEach((e) => e.removeAttribute('aria-invalid'));
+    form.querySelectorAll('[aria-describedby]').forEach((e) => e.removeAttribute('aria-describedby'));
     form.querySelectorAll('input, select, textarea').forEach((el) => {
       if (el.name === '_honey' || el.closest('[hidden]')) return;
       if (!el.checkValidity()) {
         el.setAttribute('aria-invalid', 'true');
         const line = el.closest('.cart-line');
         const key = el.name + (line ? line.dataset.uid : '');
+        el.setAttribute('aria-describedby', 'err-' + key); // every radio or select of the group points at the one message
         if (flagged.has(key)) return;
         flagged.add(key);
         const msg = document.createElement('p');
+        msg.id = 'err-' + key;
         msg.className = 'field-error';
         msg.dataset.dyn = '1';
         msg.textContent = message(el);
@@ -112,7 +121,7 @@
     if (s) s.innerHTML = summaryHtml || '';
     done.querySelectorAll('[data-keep-src]').forEach((a) => { a.href = a.getAttribute('href').split('?')[0] + location.search; });
     done.scrollIntoView(scrollOpts('start'));
-    done.focus();
+    done.focus({ preventScroll: true }); // a plain focus() re-centres the panel and hides the check mark under the header
   }
   function showError(form, mailBody, subject) {
     const box = form.querySelector('[data-form-error]');
@@ -173,7 +182,10 @@
   // DELIVERY (Metro Medical Center employees only)
   // =====================================================================
   const REMEMBER_KEY = 'tfc-delivery-me';
-  const REMEMBER_FIELDS = ['nombre', 'telefono', 'email', 'empleado_id', 'departamento', 'entrega', 'extension'];
+  const REMEMBER_FIELDS = ['nombre', 'telefono', 'email', 'departamento', 'entrega', 'extension'];
+  const REMEMBER_DAYS = 90;
+  const CART_KEY = 'tfc-cart';
+  const CART_HOURS = 2;
   const ASAP = 'Lo antes posible';
 
   function initDelivery(form) {
@@ -205,8 +217,8 @@
       const s = stations.find((x) => x.id === station);
       const pickable = (sec) => sec.items.filter((i) => i.orderable && i.available !== false);
       const list = s.sections.map((sec) => pickable(sec).map((it) => `
-          <button type="button" class="pick-item" data-add="${it.id}" aria-label="${L('Añadir', 'Add')} ${esc(tr(it.name))}">
-            <span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
+          <button type="button" class="pick-item" data-add="${it.id}">
+            <span class="sr-only">${L('Añadir', 'Add')}: </span><span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
             <span class="pick-right"><span class="mi-price">${TFC.priceHtml(it) || esc(L('precio en mostrador', 'counter price'))}</span><span class="pick-plus" aria-hidden="true">+</span></span>
           </button>`).join('')).join('');
       picker.innerHTML = `
@@ -221,6 +233,27 @@
       }));
       picker.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => add(b.dataset.add)));
       document.dispatchEvent(new CustomEvent('tfc:menu-rendered'));
+    }
+
+    // The cart survives a reload, a header link or the phone discarding the tab: this tab only, for a couple of hours.
+    function saveCart() {
+      try {
+        if (cart.length) sessionStorage.setItem(CART_KEY, JSON.stringify({ t: Date.now(), cart }));
+        else sessionStorage.removeItem(CART_KEY);
+      } catch (e) { /* storage unavailable */ }
+    }
+    function restoreCart() {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(CART_KEY) || 'null');
+        if (!saved || !Array.isArray(saved.cart) || Date.now() - saved.t > CART_HOURS * 3600 * 1000) return;
+        saved.cart.forEach((l) => {
+          const it = l && allItems[l.id];
+          if (!it || it.available === false) return; // the 'tfc:prices' handler reconciles anything the sheet changes later
+          const opts = {};
+          (it.options || []).forEach((o) => { const v = l.opts && l.opts[o.key]; opts[o.key] = o.choices.includes(v) ? v : ''; });
+          cart.push({ uid: Math.random().toString(36).slice(2), id: l.id, name: it.name, qty: Math.max(1, Math.min(99, parseInt(l.qty, 10) || 1)), opts, note: String(l.note || '').slice(0, 140) });
+        });
+      } catch (e) { /* storage unavailable or an older format */ }
     }
 
     function count() { return cart.reduce((n, l) => n + l.qty, 0); }
@@ -290,7 +323,7 @@
           </div>
           ${(it.options || []).length ? `<div class="cart-opts">${it.options.map((o) => `
             <label>${esc(TFC.pick(o.label))}
-              <select name="cart-opt" data-opt="${o.key}" required>
+              <select name="cart-opt" data-opt="${o.key}" aria-label="${esc(TFC.pick(o.label))}: ${name}" required>
                 <option value="">${L('Elige…', 'Choose…')}</option>
                 ${o.choices.map((c) => `<option value="${esc(c)}"${l.opts[o.key] === c ? ' selected' : ''}>${esc(tr(c))}</option>`).join('')}
               </select>
@@ -308,7 +341,7 @@
         qty.addEventListener('change', () => set(parseInt(qty.value, 10)));
         row.querySelector('[data-remove]').addEventListener('click', () => { cart.splice(cart.indexOf(l), 1); renderCart(); cartTitle.focus(); });
         row.querySelectorAll('[data-opt]').forEach((s) => s.addEventListener('change', () => { l.opts[s.dataset.opt] = s.value; refreshTotals(); s.removeAttribute('aria-invalid'); const err = row.querySelector('.field-error[data-dyn]'); if (err && row.querySelectorAll('select:invalid').length === 0) err.remove(); }));
-        row.querySelector('.cart-note').addEventListener('input', (e) => { l.note = e.target.value; });
+        row.querySelector('.cart-note').addEventListener('input', (e) => { l.note = e.target.value; saveCart(); });
         // Enter inside a cart field must not submit the whole form.
         row.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); } }));
       });
@@ -323,6 +356,7 @@
       return { sum: Math.round(sum * 100) / 100, unpriced, pending };
     }
     function refreshTotals() {
+      saveCart();
       list.querySelectorAll('.cart-line').forEach((row) => {
         const l = cart.find((x) => x.uid === row.dataset.uid);
         const p = linePrice(l);
@@ -338,7 +372,7 @@
     function lineText(l, withNote) {
       const opts = Object.values(l.opts).filter(Boolean).join(', ');
       const p = linePrice(l);
-      const price = p === null ? L(' — precio en mostrador', ' — counter price') : p === undefined ? '' : ` — ${TFC.money(p)}`;
+      const price = p === null ? (withNote ? ' — precio en mostrador' : L(' — precio en mostrador', ' — counter price')) : p === undefined ? '' : ` — ${TFC.money(p)}`; // kitchen lines (withNote) stay in Spanish
       return `${l.qty} × ${l.name}${opts ? ` (${opts})` : ''}${price}${withNote && l.note ? ` · ${l.note}` : ''}`;
     }
 
@@ -363,7 +397,7 @@
     const date = form.querySelector('[name=fecha]');
     const winHint = form.querySelector('[data-window-hint]');
     const T = TFC.time;
-    const nowMin = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); };
+    const nowMin = () => { const p = prParts(); return +p.hour * 60 + +p.minute; };
     const plural = (n) => (TFC.lang() === 'en' ? n + 's' : (n.endsWith('s') ? n : n + 's'));
     function availability(iso) {
       const h = T.dayHours(parseISO(iso).getDay());
@@ -374,7 +408,7 @@
       for (let t = h[0]; t + C.slotMinutes <= last; t += C.slotMinutes) {
         slots.push({ label: T.fmtRange(t, t + C.slotMinutes), past: today && t + C.slotMinutes <= nowMin() + C.orderLeadMinutes });
       }
-      const asap = today && nowMin() < last;
+      const asap = today && nowMin() >= h[0] && nowMin() < last; // before opening, the regular windows are the honest offer
       return { closed: false, slots, asap, open: slots.filter((x) => !x.past).length + (asap ? 1 : 0) };
     }
     function renderWindows() {
@@ -392,13 +426,26 @@
         : a.open === 0 ? L('Para hoy ya pasó la última llamada; elige otra fecha.', 'Today\'s last call has passed; pick another date.')
         : L('Sujeta a disponibilidad; te confirmamos la hora exacta.', 'Subject to availability; we confirm the exact time.');
     }
+    // The first day that still has windows (after last call, or on a Sunday, that is the next open day).
+    function firstOpenDay() {
+      for (let i = 0; i <= C.maxAdvanceDays; i++) { const iso = todayISO(i); if (availability(iso).open > 0) return iso; }
+      return todayISO(0);
+    }
     date.min = todayISO(0);
     date.max = todayISO(C.maxAdvanceDays);
-    // Default to the first day that still has windows (after last call, or on a Sunday, that is the next open day).
-    let first = todayISO(0);
-    for (let i = 0; i <= C.maxAdvanceDays; i++) { const iso = todayISO(i); if (availability(iso).open > 0) { first = iso; break; } }
-    date.value = first;
+    date.value = firstOpenDay();
     date.addEventListener('change', renderWindows);
+    // A phone can keep this page open for hours: re-check the calendar and the windows before sending and on coming back.
+    function refreshDates(moveOn) {
+      date.min = todayISO(0);
+      date.max = todayISO(C.maxAdvanceDays);
+      if (moveOn && date.value && date.value < date.min) { date.value = firstOpenDay(); win.value = ''; }
+      renderWindows();
+    }
+    // At submit a past date gets the normal error: never send a day the customer didn't choose.
+    form.addEventListener('submit', () => refreshDates(false)); // registered before wireSubmit's handler, so it runs first
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDates(true); });
+    window.addEventListener('pageshow', (e) => { if (e.persisted) refreshDates(true); });
 
     // ----- static chip groups (re-rendered on language toggle, selection kept) -----
     const pay = form.querySelector('[data-payment]');
@@ -444,10 +491,13 @@
     // ----- remember me (this phone only) -----
     const remember = form.querySelector('[name=recordar]');
     try {
-      const saved = JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null');
+      let saved = JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null');
+      if (saved && Date.now() - (saved.t || 0) > REMEMBER_DAYS * 864e5) { localStorage.removeItem(REMEMBER_KEY); saved = null; }
       if (saved) { REMEMBER_FIELDS.forEach((k) => { if (saved[k] && form[k] && !form[k].value) form[k].value = saved[k]; }); if (remember) remember.checked = true; }
     } catch (e) { /* storage unavailable */ }
+    if (remember) remember.addEventListener('change', () => { if (!remember.checked) { try { localStorage.removeItem(REMEMBER_KEY); } catch (e) { /* storage unavailable */ } } });
 
+    restoreCart();
     renderPicker();
     renderCart();
 
@@ -488,7 +538,7 @@
         if (emp) { payload['Núm. empleado'] = f.empleado_id; payload.Departamento = f.departamento; }
         if (!pickup) { payload['Entregar en'] = f.entrega; payload['Extensión'] = f.extension || ''; }
         Object.assign(payload, {
-          Fecha: `${f.fecha} (${fmtDate(f.fecha)})`,
+          Fecha: `${f.fecha} (${fmtDate(f.fecha, 'es-PR')})`,
           Hora: f.ventana,
           Pago: f.pago,
           'Artículos': String(count()),
@@ -514,10 +564,12 @@
       after() {
         try {
           if (remember && remember.checked) {
-            const o = {}; REMEMBER_FIELDS.forEach((k) => { o[k] = form[k].value; });
+            const o = { t: Date.now() }; REMEMBER_FIELDS.forEach((k) => { o[k] = form[k].value; });
             localStorage.setItem(REMEMBER_KEY, JSON.stringify(o));
           } else localStorage.removeItem(REMEMBER_KEY);
         } catch (e) { /* storage unavailable */ }
+        cart.length = 0; // a language toggle behind the confirmation must not save the sent order again
+        try { sessionStorage.removeItem(CART_KEY); } catch (e) { /* storage unavailable */ }
       },
     });
   }
@@ -530,16 +582,14 @@
     const time = form.querySelector('[name=hora]');
     const leadHours = Number(C.cateringLeadHours) || 0;
     const earliest = () => new Date(Date.now() + leadHours * 3600 * 1000);
-    const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const isoOf = (d) => { const p = prParts(d); return `${p.year}-${p.month}-${p.day}`; };
     date.min = isoOf(earliest());
     // The lead time applies to the service date AND time: a request for the earliest allowed day
     // must still be at least `leadHours` ahead of the chosen service hour.
     const checkLead = () => {
       time.setCustomValidity('');
       if (!date.value || !time.value) return;
-      const [h, m] = time.value.split(':').map(Number);
-      const service = parseISO(date.value);
-      service.setHours(h || 0, m || 0, 0, 0);
+      const service = new Date(`${date.value}T${time.value}:00-04:00`); // Puerto Rico is UTC-4 all year
       if (Number.isNaN(service.getTime())) return;
       if (service < earliest()) {
         time.setCustomValidity(L(
@@ -595,8 +645,8 @@
           'Contactar por': f.contacto_pref,
           'Organización': f.organizacion || '',
           'Tipo de evento': f.tipo_evento,
-          'Fecha del evento': `${f.fecha_evento} (${fmtDate(f.fecha_evento)})`,
-          Hora: fmtTime(f.hora),
+          'Fecha del evento': `${f.fecha_evento} (${fmtDate(f.fecha_evento, 'es-PR')})`,
+          Hora: fmtTime(f.hora, 'es-PR'),
           Personas: f.invitados,
           Lugar: `${f.lugar_tipo} — ${f.direccion}`,
           Servicio: f.servicio,

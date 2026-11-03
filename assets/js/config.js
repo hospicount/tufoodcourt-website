@@ -13,7 +13,7 @@ window.TFC_CONFIG = {
   instagram: '',      // TODO e.g. 'tufoodcourtpr'
   facebook: '',       // TODO
 
-  openingLabel: { es: 'Abrimos en noviembre 2026', en: 'Opening November 2026' },
+  openingLabel: { es: '¡Ya estamos abiertos!', en: 'We\'re now open!' },
 
   // Not available yet: station ids or dish ids from menu.js. A station gets a «Próximamente» badge on the home page,
   // its menu tab becomes a preview without prices, it cannot be ordered and its catering option is disabled.

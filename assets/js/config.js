@@ -15,6 +15,15 @@ window.TFC_CONFIG = {
 
   openingLabel: { es: 'Abrimos en noviembre 2026', en: 'Opening November 2026' },
 
+  // Not available yet: station ids or dish ids from menu.js. A station gets a «Próximamente» badge on the home page,
+  // its menu tab becomes a preview without prices, it cannot be ordered and its catering option is disabled.
+  // A dish shows «Próximamente» instead of its price and cannot be ordered. To open one, remove its id here
+  // (for a station also rewrite the "muy pronto" sentences: README → Estaciones y platos próximamente).
+  comingSoon: [
+    'pizza', 'mexicano',                        // stations
+    'po-flan', 'po-tres-leches', 'po-choco',    // desserts (the fruit salad is the dessert available now)
+  ],
+
   // Opening hours — single source for the footer, the "Visítanos" card and the order time windows.
   // 0 = Sunday … 6 = Saturday; null = closed; 24-hour "HH:MM".
   schedule: {

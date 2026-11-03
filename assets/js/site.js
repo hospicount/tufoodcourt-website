@@ -24,6 +24,9 @@
   TFC.pick = (v) => (v && typeof v === 'object' ? v[lang] ?? v.es : v);
   // Display translation for a Spanish data value (option choices, payment methods, catering values). Sent values stay Spanish.
   TFC.tr = (v) => (lang === 'en' && window.TFC_EN_VALUES && window.TFC_EN_VALUES[v]) || v;
+  // Stations in config.comingSoon: preview only (no prices, not orderable), marked «Próximamente».
+  TFC.isSoon = (id) => Array.isArray(C.comingSoon) && C.comingSoon.includes(id);
+  TFC.soonTag = () => `<span class="soon-tag">${lang === 'en' ? 'Coming soon' : 'Próximamente'}</span>`;
 
   // ---------- prices ----------
   const adjust = (n) => {
@@ -219,6 +222,12 @@
     return items.slice(0, -1).join(', ') + (lang === 'en' ? ' or ' : ' o ') + items[items.length - 1];
   }
   function bindConfig() {
+    // «Próximamente» badges show only for stations still in config.comingSoon; their catering options stay disabled.
+    document.querySelectorAll('[data-soon]').forEach((el) => { el.hidden = !TFC.isSoon(el.dataset.soon); });
+    document.querySelectorAll('[data-soon-station]').forEach((input) => {
+      input.disabled = TFC.isSoon(input.dataset.soonStation);
+      if (input.disabled) input.checked = false;
+    });
     document.querySelectorAll('[data-cfg]').forEach((el) => {
       const v = el.dataset.cfg === 'hours' ? hoursLines() : TFC.pick(C[el.dataset.cfg]);
       const text = Array.isArray(v) ? v.map(esc).join('<br>') : esc(v ?? '');
@@ -259,22 +268,24 @@
     root.dataset.active = active;
     const tabs = stations.map((s) => `
       <button type="button" class="menu-tab tab-${s.color}" aria-pressed="${s.id === active}" data-station="${s.id}">
-        ${esc(TFC.pick(s.station))}
+        ${esc(TFC.pick(s.station))}${TFC.isSoon(s.id) ? ' ' + TFC.soonTag() : ''}
       </button>`).join('');
     const s = stations.find((x) => x.id === active);
+    const soon = TFC.isSoon(s.id); // a preview: dishes without prices (they are announced when the station opens)
     const sections = s.sections.filter((sec) => sec.groups || TFC.visibleItems(sec).length).map((sec) => `
       <section class="menu-section">
         <h3>${esc(TFC.pick(sec.title))}</h3>
-        ${sec.note ? `<p class="menu-note">${esc(TFC.pick(sec.note))}</p>` : ''}
+        ${sec.note && !soon ? `<p class="menu-note">${esc(TFC.pick(sec.note))}</p>` : ''}
         ${sec.groups ? `<div class="menu-groups">${sec.groups.map((g) => `
           <div class="menu-group"><h4>${esc(TFC.pick(g.label))}</h4><ul>${g.list.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>` : `
         <ul class="menu-items">${TFC.visibleItems(sec).map((it) => `
-          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}</span><span class="mi-price">${TFC.priceHtml(it) || esc(lang === 'en' ? 'counter price' : 'precio en mostrador')}</span></div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
+          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}</span>${soon ? '' : TFC.isSoon(it.id) ? `<span class="mi-soon">${TFC.soonTag()}</span>` : `<span class="mi-price">${TFC.priceHtml(it) || esc(lang === 'en' ? 'counter price' : 'precio en mostrador')}</span>`}</div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
       </section>`).join('');
     root.innerHTML = `
       <div class="menu-tabs">${tabs}</div>
       <div class="menu-panel panel-${s.color}">
         <p class="menu-tagline">${esc(TFC.pick(s.tagline))}</p>
+        ${soon ? `<p class="soon-note">${lang === 'en' ? '<strong>Coming soon.</strong> We are getting this station ready. Here is a preview of the menu; prices will be posted when it opens.' : '<strong>Próximamente.</strong> Estamos preparando esta estación. Aquí tienes un adelanto del menú; los precios se publican al abrir.'}</p>` : ''}
         ${s.id === 'criollo' ? '<div class="criollo-today" data-criollo-today hidden></div>' : ''}
         <div class="menu-sections">${sections || `<p class="menu-empty">${lang === 'en' ? 'No dishes available right now.' : 'Sin platos disponibles por ahora.'}</p>`}</div>
       </div>`;

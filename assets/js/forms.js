@@ -204,7 +204,10 @@
     let cartNotice = ''; // one-line status above the cart after the sheet changed something the customer had chosen
     function indexItems() {
       allItems = {};
-      window.TFC_MENU.forEach((s) => s.sections.forEach((sec) => sec.items.forEach((it) => { if (it.orderable) allItems[it.id] = { ...it, station: s }; })));
+      window.TFC_MENU.forEach((s) => { // stations and dishes still «Próximamente» (config.comingSoon) cannot be ordered
+        if (TFC.isSoon(s.id)) return;
+        s.sections.forEach((sec) => sec.items.forEach((it) => { if (it.orderable && !TFC.isSoon(it.id)) allItems[it.id] = { ...it, station: s }; }));
+      });
     }
     indexItems();
 
@@ -215,18 +218,24 @@
       }
       const stations = window.TFC_MENU;
       const s = stations.find((x) => x.id === station);
+      const soon = TFC.isSoon(s.id);
       const pickable = (sec) => sec.items.filter((i) => i.orderable && i.available !== false);
-      const list = s.sections.map((sec) => pickable(sec).map((it) => `
+      const list = soon ? '' : s.sections.map((sec) => pickable(sec).map((it) => TFC.isSoon(it.id) ? `
+          <div class="pick-item pick-soon">
+            <span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
+            <span class="pick-right">${TFC.soonTag()}</span>
+          </div>` : `
           <button type="button" class="pick-item" data-add="${it.id}">
             <span class="sr-only">${L('Añadir', 'Add')}: </span><span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
             <span class="pick-right"><span class="mi-price">${TFC.priceHtml(it) || esc(L('precio en mostrador', 'counter price'))}</span><span class="pick-plus" aria-hidden="true">+</span></span>
           </button>`).join('')).join('');
       picker.innerHTML = `
         <div class="menu-tabs small">${stations.map((x) => `
-          <button type="button" class="menu-tab tab-${x.color}" aria-pressed="${x.id === station}" data-station="${x.id}">${esc(TFC.pick(x.station))}</button>`).join('')}
+          <button type="button" class="menu-tab tab-${x.color}" aria-pressed="${x.id === station}" data-station="${x.id}">${esc(TFC.pick(x.station))}${TFC.isSoon(x.id) ? ' ' + TFC.soonTag() : ''}</button>`).join('')}
         </div>
         ${station === 'criollo' ? '<div class="criollo-today compact" data-criollo-today hidden></div>' : ''}
-        <div class="pick-list">${list || `<p class="menu-empty">${L('Sin platos disponibles por ahora.', 'No dishes available right now.')}</p>`}</div>`;
+        <div class="pick-list">${soon ? `<p class="soon-note">${L('<strong>Próximamente.</strong> Esta estación abre muy pronto. Por ahora puedes pedir de las demás estaciones.', '<strong>Coming soon.</strong> This station opens soon. For now you can order from the other stations.')}</p>`
+          : list || `<p class="menu-empty">${L('Sin platos disponibles por ahora.', 'No dishes available right now.')}</p>`}</div>`;
       picker.querySelectorAll('[data-station]').forEach((b) => b.addEventListener('click', () => {
         station = b.dataset.station; renderPicker();
         picker.querySelector(`[data-station="${station}"]`).focus();
@@ -246,13 +255,24 @@
       try {
         const saved = JSON.parse(sessionStorage.getItem(CART_KEY) || 'null');
         if (!saved || !Array.isArray(saved.cart) || Date.now() - saved.t > CART_HOURS * 3600 * 1000) return;
+        const soonIds = new Set(); // dishes of stations or dishes in config.comingSoon
+        window.TFC_MENU.forEach((s) => s.sections.forEach((sec) => sec.items.forEach((it) => { if (TFC.isSoon(s.id) || TFC.isSoon(it.id)) soonIds.add(it.id); })));
+        const soonNames = [], goneNames = [];
         saved.cart.forEach((l) => {
           const it = l && allItems[l.id];
-          if (!it || it.available === false) return; // the 'tfc:prices' handler reconciles anything the sheet changes later
+          if (!it || it.available === false) { // the 'tfc:prices' handler reconciles anything the sheet changes later
+            if (l && l.name) (soonIds.has(l.id) && !it ? soonNames : goneNames).push(tr(String(l.name)));
+            return;
+          }
           const opts = {};
           (it.options || []).forEach((o) => { const v = l.opts && l.opts[o.key]; opts[o.key] = o.choices.includes(v) ? v : ''; });
           cart.push({ uid: Math.random().toString(36).slice(2), id: l.id, name: it.name, qty: Math.max(1, Math.min(99, parseInt(l.qty, 10) || 1)), opts, note: String(l.note || '').slice(0, 140) });
         });
+        // Tell the customer what a saved cart lost (e.g. a dish added before it was marked «Próximamente»).
+        cartNotice = [
+          soonNames.length ? L(`${soonNames.join(', ')}: ${soonNames.length > 1 ? 'llegan' : 'llega'} muy pronto; por ahora se quitó de tu pedido.`, `${soonNames.join(', ')}: coming soon; removed from your order for now.`) : '',
+          goneNames.length ? L(`${goneNames.join(', ')}: ya no está disponible y se quitó de tu pedido.`, `${goneNames.join(', ')}: no longer available, removed from your order.`) : '',
+        ].filter(Boolean).join(' ');
       } catch (e) { /* storage unavailable or an older format */ }
     }
 
@@ -500,6 +520,7 @@
     restoreCart();
     renderPicker();
     renderCart();
+    if (cartNotice && live) live.textContent = cartNotice; // after renderCart(): announce() rewrites the live region
 
     wireSubmit(form, {
       check(fieldsOk) {

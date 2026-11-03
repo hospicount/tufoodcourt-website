@@ -16,6 +16,7 @@ Sitio estático (HTML/CSS/JS sin build) para **tufoodcourtpr.com**. Español por
 - **Teléfono, email, horario (`schedule`), redes, última llamada / duración de ventanas / días de anticipación, métodos de pago, recogido solo-empleados sí/no, horas mínimas de anticipación para catering (48, sin mínimo de personas)** → `assets/js/config.js`. Las ventanas de hora y las líneas de horario del sitio se generan solas a partir de `schedule` (hoy: L–V 6:00 AM–2:00 PM, sáb. 8:00 AM–1:00 PM, dom. cerrado; última llamada 30 min antes de cerrar = 1:30 PM / 12:30 PM). El afiche de `/qr/` también lee horario, última llamada y métodos de pago de aquí..
 - **Precios del día a día y platos agotados** → pestaña **«Precios»** de la hoja de Google del dueño (ver «Precios y disponibilidad» abajo). No hace falta tocar código ni publicar.
 - **Platos (añadir, quitar, renombrar) y precios base de fábrica** → `assets/js/menu.js` (fuente: `MENU CON PRECIOS BAYAMON.xlsx`, precios sin IVU; `price` fijo o `priceBy` + `prices` cuando depende de una opción, p. ej. tamaño de pizza; `price: null` = «precio en mostrador», no suma al subtotal). El recargo del 3.8% y el redondeo hacia arriba a .99 se controlan con `priceAdjustPercent` / `priceRounding` en `config.js`; el sitio calcula el precio final a partir del precio base (de la hoja «Precios» si hay, si no de `menu.js`). Al añadir un plato en `menu.js`, añade también su fila **a mano** en la pestaña «Precios» (ver esa sección; reimportar el CSV borra los cambios del dueño).
+- **Estaciones o platos que todavía no están disponibles (hoy: Pizza, Mexicano y los postres menos la ensalada de frutas)** → `comingSoon` en `assets/js/config.js` (ver «Estaciones y platos próximamente» abajo).
 - **Textos en inglés** → `assets/js/i18n.js` (los textos en español viven en cada HTML)
 - **Colores y tipografía** → `assets/css/site.css` (verde `#004F39`, rojo-naranja `#DB461C`, ámbar `#F59924`, muestreados del logo oficial)
 - **Logos** → `assets/img/`. `logo-v1.png`, `logo-horiz-v1.png`, `pattern-tile.png` y los íconos están optimizados a PNG de 8 bits (`logo-horiz-v1.png` a 360 px, porque se muestra a 114 px). Los originales grandes siguen en los assets de marca.
@@ -37,7 +38,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261101a`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261103a`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash
@@ -56,6 +57,21 @@ for n,p in [('pedidos','/pedidos/?src=qr'),('delivery','/delivery/?src=qr'),('ca
     q.save(f'assets/img/qr/qr-{n}.png', scale=24, border=2, dark='#004F39', light='#FFFFFF')
 "
 ```
+
+## Estaciones y platos próximamente
+`comingSoon` en `config.js` lleva ids de `menu.js`: estaciones (`'pizza'`, `'mexicano'`) o platos (`'po-flan'`, `'po-tres-leches'`, `'po-choco'`).
+
+Un **plato** en la lista sale con «Próximamente» en lugar del precio (menú de la home y formulario de pedidos) y no se puede pedir. La ensalada de frutas (`TFC_FRUTAS` en `menu.js`) aparece en Desayuno y en Postres; es el mismo plato, así que su fila de la hoja «Precios» vale para los dos.
+
+Mientras una **estación** esté en esa lista:
+- su tarjeta en la home lleva la etiqueta «Próximamente» (`data-soon` en `index.html`);
+- su pestaña del menú muestra los platos como adelanto, **sin precios** y con el aviso «Próximamente»;
+- en `/delivery/` su pestaña dice que abre pronto y sus platos no se pueden pedir (si un carrito guardado los tenía, se quitan);
+- en `/catering/` su opción aparece desactivada con «Próximamente» (`data-soon-station`).
+
+**Cuando abra un plato:** quita su id de `comingSoon` y sube el `?v=`.
+
+**Cuando abra una estación:** quita su id de `comingSoon`, reescribe las frases «muy pronto» (en español en `index.html` → `hero.lead` y `ct.lead2`, y `catering/index.html` → `c.lead`, la `meta description` y el `og:description`; la `meta description` de `delivery/index.html`; en inglés las mismas claves en `i18n.js`; el historial de git tiene el texto anterior) y sube el `?v=`.
 
 ## Menú criollo del día (Google Sheet)
 

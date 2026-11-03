@@ -2,6 +2,9 @@
 // Prices are in USD before IVU. `price` is a flat price; `priceBy` + `prices` make the price depend on one option
 // (e.g. pizza size). `price: null` = not priced yet (shown as "precio en mostrador", excluded from the subtotal).
 // `orderable` items appear in the delivery/pickup picker. `options` render as required selects on each cart line.
+// Listed under Desayuno and Postres. It is one shared object, so a price or «Disponible» change in the sheet applies to both.
+const TFC_FRUTAS = { id: 'de-frutas', name: 'Ensalada de frutas', price: 7, orderable: true };
+
 window.TFC_MENU = [
   {
     id: 'desayuno',
@@ -20,7 +23,7 @@ window.TFC_MENU = [
           { id: 'de-wrap-cubano', name: 'Wrap cubano', price: 9, orderable: true },
           { id: 'de-wrap', name: 'Wrap de desayuno', price: 8, orderable: true },
           { id: 'de-yogurt', name: 'Yogurt con granola', price: 6, orderable: true },
-          { id: 'de-frutas', name: 'Ensalada de frutas', price: 7, orderable: true },
+          TFC_FRUTAS,
           { id: 'de-avena', name: 'Avena', price: 4, orderable: true },
         ],
       },
@@ -161,6 +164,7 @@ window.TFC_MENU = [
       {
         title: { es: 'Postres', en: 'Desserts' },
         items: [
+          TFC_FRUTAS,
           { id: 'po-flan', name: 'Flan de guava y queso', price: 6, orderable: true },
           { id: 'po-tres-leches', name: 'Tres leches', price: 7, orderable: true },
           { id: 'po-choco', name: 'Choco Fudge Cake', price: 8, orderable: true },

@@ -20,7 +20,8 @@ window.TFC_CONFIG = {
   // A dish shows «Próximamente» instead of its price and cannot be ordered. To open one, remove its id here
   // (for a station also rewrite the "muy pronto" sentences: README → Estaciones y platos próximamente).
   comingSoon: [
-    'pizza', 'mexicano',                        // stations
+    'pizza',                                    // station (Mexicano opens 2026-11-05 with a limited menu: the «Precios» tab hides everything but nachos and Cielito Lindo)
+    'catering-tacos',                           // the «Barra de tacos» option of the catering form stays disabled while the Mexican station sells nachos only
     'po-flan', 'po-tres-leches', 'po-choco',    // desserts (the fruit salad is the dessert available now)
   ],
 

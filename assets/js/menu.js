@@ -42,7 +42,7 @@ window.TFC_MENU = [
           en: 'Build your plate from today\'s line: rice, stew and protein of the day. Write your preference in the note and we confirm what\'s available.',
         },
         items: [
-          { id: 'cr-plato', name: 'Plato criollo del día', desc: { es: 'Arroz, guiso y proteína del día · Regular o Combo', en: 'Rice, stew and protein of the day · Regular or Combo' }, orderable: true,
+          { id: 'cr-plato', name: 'Plato criollo del día', desc: { es: 'Arroz, guiso y proteína del día', en: 'Rice, stew and protein of the day' }, orderable: true,
             options: [{ key: 'tipo', label: { es: 'Opción', en: 'Option' }, choices: ['Regular', 'Combo'] }],
             priceBy: 'tipo', prices: { 'Regular': 11.99, 'Combo': 14.99 },
             notePh: { es: 'Ej.: arroz con gandules, habichuelas, pollo', en: 'E.g.: rice with pigeon peas, beans, chicken' } },
@@ -93,7 +93,7 @@ window.TFC_MENU = [
   {
     id: 'mexicano',
     station: { es: 'Mexicano', en: 'Mexican' },
-    tagline: { es: 'Tacos, burritos, quesadillas, nachos y más', en: 'Tacos, burritos, quesadillas, nachos and more' },
+    tagline: { es: 'Empezamos con nachos; el resto de la carta, muy pronto', en: 'Starting with nachos; the rest of the menu, coming soon' },
     color: 'amber',
     sections: [
       {
@@ -118,7 +118,7 @@ window.TFC_MENU = [
       {
         title: { es: 'Nachos, papas y burger', en: 'Nachos, potatoes & burger' },
         items: [
-          { id: 'na-nachos', name: 'Nachos', desc: { es: 'Regular, o con carne, pollo o cerdo', en: 'Regular, or with beef, chicken or pork' }, orderable: true,
+          { id: 'na-nachos', name: 'Nachos', orderable: true, // styles come from the «Precios» tab (only Carne while the menu is limited)
             options: [{ key: 'estilo', label: { es: 'Estilo', en: 'Style' }, choices: ['Regular', 'Carne', 'Pollo', 'Cerdo'] }],
             priceBy: 'estilo', prices: { 'Regular': 8, 'Carne': 12, 'Pollo': 12, 'Cerdo': 12 } },
           { id: 'lp-potato', name: 'Loaded Potato', desc: { es: 'Carne, cerdo o pollo', en: 'Beef, pork or chicken' }, orderable: true,
@@ -132,6 +132,7 @@ window.TFC_MENU = [
         items: [
           { id: 'ap-guac', name: 'Guacamole', price: 6, orderable: true },
           { id: 'ap-pico', name: 'Pico de gallo', price: 3, orderable: true },
+          { id: 'ap-cielito', name: 'Cielito Lindo con chips', price: null, orderable: true }, // added 2026-11-04; price not set yet → «precio en mostrador» until the owner types it in the «Precios» tab
         ],
       },
     ],

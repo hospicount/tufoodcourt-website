@@ -16,7 +16,7 @@ Sitio estático (HTML/CSS/JS sin build) para **tufoodcourtpr.com**. Español por
 - **Teléfono, email, horario (`schedule`), redes, última llamada / duración de ventanas / días de anticipación, métodos de pago, recogido solo-empleados sí/no, horas mínimas de anticipación para catering (48, sin mínimo de personas)** → `assets/js/config.js`. Las ventanas de hora y las líneas de horario del sitio se generan solas a partir de `schedule` (hoy: L–V 6:00 AM–2:00 PM, sáb. 8:00 AM–1:00 PM, dom. cerrado; última llamada 30 min antes de cerrar = 1:30 PM / 12:30 PM). El afiche de `/qr/` también lee horario, última llamada y métodos de pago de aquí..
 - **Precios del día a día y platos agotados** → pestaña **«Precios»** de la hoja de Google del dueño (ver «Precios y disponibilidad» abajo). No hace falta tocar código ni publicar.
 - **Platos (añadir, quitar, renombrar) y precios base de fábrica** → `assets/js/menu.js` (fuente: `MENU CON PRECIOS BAYAMON.xlsx`, precios sin IVU; `price` fijo o `priceBy` + `prices` cuando depende de una opción, p. ej. tamaño de pizza; `price: null` = «precio en mostrador», no suma al subtotal). El recargo del 3.8% y el redondeo hacia arriba a .99 se controlan con `priceAdjustPercent` / `priceRounding` en `config.js`; el sitio calcula el precio final a partir del precio base (de la hoja «Precios» si hay, si no de `menu.js`). Al añadir un plato en `menu.js`, añade también su fila **a mano** en la pestaña «Precios» (ver esa sección; reimportar el CSV borra los cambios del dueño).
-- **Estaciones o platos que todavía no están disponibles (hoy: Pizza, Mexicano y los postres menos la ensalada de frutas)** → `comingSoon` en `assets/js/config.js` (ver «Estaciones y platos próximamente» abajo).
+- **Estaciones o platos que todavía no están disponibles (hoy: Pizza, la barra de tacos del catering y los postres menos la ensalada de frutas)** → `comingSoon` en `assets/js/config.js` (ver «Estaciones y platos próximamente» abajo). Mexicano está abierto con **menú limitado** (nachos con carne y Cielito Lindo con chips): lo demás se esconde con «No» en la pestaña «Precios», no con código.
 - **Textos en inglés** → `assets/js/i18n.js` (los textos en español viven en cada HTML)
 - **Colores y tipografía** → `assets/css/site.css` (verde `#004F39`, rojo-naranja `#DB461C`, ámbar `#F59924`, muestreados del logo oficial)
 - **Logos** → `assets/img/`. `logo-v1.png`, `logo-horiz-v1.png`, `pattern-tile.png` y los íconos están optimizados a PNG de 8 bits (`logo-horiz-v1.png` a 360 px, porque se muestra a 114 px). Los originales grandes siguen en los assets de marca.
@@ -38,7 +38,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261103c`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261104a`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash
@@ -59,7 +59,9 @@ for n,p in [('pedidos','/pedidos/?src=qr'),('delivery','/delivery/?src=qr'),('ca
 ```
 
 ## Estaciones y platos próximamente
-`comingSoon` en `config.js` lleva ids de `menu.js`: estaciones (`'pizza'`, `'mexicano'`) o platos (`'po-flan'`, `'po-tres-leches'`, `'po-choco'`).
+`comingSoon` en `config.js` lleva ids de `menu.js`: estaciones (`'pizza'`) o platos (`'po-flan'`, `'po-tres-leches'`, `'po-choco'`), más el id especial `'catering-tacos'`, que solo desactiva la opción «Barra de tacos» del formulario de catering (`data-soon-station` / `data-soon` en `catering/index.html`).
+
+**Mexicano abre el 2026-11-05 con menú limitado.** La estación salió de `comingSoon`; lo que no se vende está en «No» en la pestaña «Precios» (tacos, burrito, quesadilla, nachos Regular/Pollo/Cerdo, loaded potato, Mex Burger, guacamole, pico de gallo). Se venden Nachos · Carne ($12.99) y **Cielito Lindo con chips** (`ap-cielito`, fila nueva en «Precios» sin precio → «precio en mostrador» hasta que el dueño escriba el precio base). Para ampliar la carta mexicana: borrar los «No» en la hoja (sin código). Cuando se venda la carta completa, actualizar también el `tagline` de la estación y el texto `st.mex` (home) y, si se ofrece barra de tacos en catering, quitar `'catering-tacos'` de `comingSoon` y reescribir «muy pronto» en `catering/index.html` (`c.lead`, `meta description`, `og:description`), `index.html` (`ct.lead2`) e `i18n.js`.
 
 Un **plato** en la lista sale con «Próximamente» en lugar del precio (menú de la home y formulario de pedidos) y no se puede pedir. La ensalada de frutas (`TFC_FRUTAS` en `menu.js`) aparece en Desayuno y en Postres; es el mismo plato, así que su fila de la hoja «Precios» vale para los dos.
 

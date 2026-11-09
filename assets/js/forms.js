@@ -96,9 +96,12 @@
     return !firstBad;
   }
 
-  async function send(payload) {
+  // One attempt against FormSubmit. Every failure carries a short, translated `detail` for the error box (and the fallback
+  // email), so a customer's screenshot tells us what went wrong; a clear "no" from the service is marked `final`.
+  // (Not named `code`: a DOMException such as the AbortError of the timeout already has a numeric, read-only `code`.)
+  async function postOnce(payload, timeoutMs) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20000);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs); // hospital Wi-Fi and the service itself can be slow
     try {
       const res = await fetch('https://formsubmit.co/ajax/' + encodeURIComponent(C.formEmail), {
         method: 'POST',
@@ -106,10 +109,34 @@
         body: JSON.stringify(payload),
         signal: ctrl.signal,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || String(data.success) === 'false') throw new Error(data.message || 'send failed');
+      const data = await res.json().catch((e) => { if (e && e.name === 'SyntaxError') return {}; throw e; }); // a non-JSON answer (bot-check page, empty body) is "unexpected"; a timeout or a dropped connection mid-body is not
+      if (String(data.success) === 'false') {
+        const e = new Error(data.message || 'rejected');
+        e.final = true;
+        e.detail = L('rechazado por el servicio', 'rejected by the service') + (data.message ? ': ' + String(data.message).slice(0, 80) : '');
+        throw e;
+      }
+      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.detail = 'HTTP ' + res.status; throw e; }
+      if (String(data.success) !== 'true') { const e = new Error('unexpected answer'); e.detail = L('respuesta inesperada del servicio', 'unexpected answer from the service'); throw e; }
       return data;
+    } catch (err) {
+      if (err && err.detail) throw err;
+      const e = new Error((err && err.message) || 'send failed'); // fetch's TypeError or the timeout's AbortError
+      e.detail = err && err.name === 'AbortError' ? L('el servicio tardó demasiado', 'the service took too long') : L('sin conexión con el servicio', 'no connection to the service');
+      throw e;
     } finally { clearTimeout(timer); }
+  }
+  // A hiccup (no network for a second, a timeout, a 5xx or a bot-check page instead of JSON) gets one quiet retry.
+  // If the first attempt did reach the service and only its answer was lost, the owner gets the same order twice:
+  // both emails carry the same Referencia, so the duplicate is obvious. Losing an order is the worse outcome.
+  // Budgets: 20 s for the first attempt, 15 s for the retry, so the customer never waits more than ~37 s for an answer.
+  async function send(payload, onRetry) {
+    try { return await postOnce(payload, 20000); } catch (err) {
+      if (err.final) throw err;
+      await new Promise((r) => setTimeout(r, 1500));
+      if (onRetry) onRetry();
+      return postOnce(payload, 15000);
+    }
   }
 
   function showDone(form, ref, summaryHtml) {
@@ -123,13 +150,15 @@
     done.scrollIntoView(scrollOpts('start'));
     done.focus({ preventScroll: true }); // a plain focus() re-centres the panel and hides the check mark under the header
   }
-  function showError(form, mailBody, subject) {
+  function showError(form, mailBody, subject, detail) {
     const box = form.querySelector('[data-form-error]');
     box.hidden = false;
-    const mail = `mailto:${esc(C.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody)}`;
+    const body = mailBody + (detail ? `\n\n[${L('Error al enviar desde la página', 'Error sending from the page')}: ${detail}]` : '');
+    const mail = `mailto:${esc(C.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const phone = C.phone ? L(` o llámanos al <a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">${esc(C.phone)}</a>`, ` or call us at <a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">${esc(C.phone)}</a>`) : '';
     box.innerHTML = L(
-      `No pudimos enviar tu solicitud (sin conexión o el servicio tardó demasiado). Intenta de nuevo o <a href="${mail}">envíala por email</a> con un toque.`,
-      `We couldn't send your request (no connection or the service timed out). Try again or <a href="${mail}">send it by email</a> with one tap.`);
+      `<strong>Tu solicitud NO se envió.</strong> Intenta de nuevo en un momento. Si sigue fallando, <a href="${mail}">envíala por email</a> con un toque (ya va escrita)${phone}.${detail ? `<br><small>Detalle técnico: ${esc(detail)}</small>` : ''}`,
+      `<strong>Your request was NOT sent.</strong> Try again in a moment. If it still fails, <a href="${mail}">send it by email</a> with one tap (it is already filled in)${phone}.${detail ? `<br><small>Technical detail: ${esc(detail)}</small>` : ''}`);
     box.scrollIntoView(scrollOpts());
     box.focus();
   }
@@ -156,11 +185,11 @@
       btn.textContent = L('Enviando…', 'Sending…');
       const { payload, summaryHtml, plain } = build.payload();
       try {
-        await send(payload);
+        await send(payload, () => { btn.textContent = L('Reintentando…', 'Retrying…'); });
         if (build.after) build.after();
         showDone(form, payload.Referencia, summaryHtml);
       } catch (err) {
-        showError(form, plain, payload._subject);
+        showError(form, plain, payload._subject, err && err.detail);
       } finally {
         btn.disabled = false;
         btn.innerHTML = btn.dataset.label;

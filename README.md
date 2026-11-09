@@ -26,6 +26,8 @@ Sitio estático (HTML/CSS/JS sin build) para **tufoodcourtpr.com**. Español por
 ## Cómo llegan los pedidos
 Los dos formularios envían por AJAX a **FormSubmit** (`https://formsubmit.co/ajax/<formEmail>`), que reenvía todo al buzón configurado en `config.js` y manda una copia automática al cliente.
 
+Si el envío falla por red, por timeout o por una respuesta rara, la página reintenta una vez (el botón pasa de «Enviando…» a «Reintentando…»): 20 s de espera máxima en el primer intento, 1.5 s de pausa y 15 s en el segundo, unos 37 s en el peor caso. Si FormSubmit rechaza el envío (`success:false`) no se reintenta. Si aun así no pasa, el cliente ve en rojo «Tu solicitud NO se envió», un enlace para mandarla por email con el pedido ya escrito y, en letra pequeña, el **detalle técnico** del fallo (p. ej. «HTTP 403», «el servicio tardó demasiado», «rechazado por el servicio: …»). Ese detalle viaja también en el email de respaldo. Si un cliente se queja de que no puede enviar, pídele una captura: el detalle dice si el problema es FormSubmit, la red del hospital o un dato rechazado.
+
 **Activación (una sola vez):** la primera vez que se envíe un formulario, FormSubmit manda un email de activación a `formEmail`; hay que hacer clic en ese enlace o los mensajes no llegan. Hazlo tú mismo con un pedido de prueba una vez el buzón exista.
 
 Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC-R-…` recogido, `TFC-C-…` catering), modalidad, nombre, teléfono, email, canal preferido de confirmación, número de empleado y departamento (solo delivery), lugar/fecha/ventana, cada línea del pedido como fila (`Pedido 1`, `Pedido 2`…), método de pago (ATH Móvil, tarjeta de crédito o efectivo), notas, idioma y origen (`qr` o `web`). El cliente recibe una copia automática con el resumen de su pedido.
@@ -38,7 +40,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261104a`. Cuando cambies `config.js`, `menu.js`, `i18n.js` o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261109a`. Cuando cambies cualquier archivo de `assets/js` (`config.js`, `menu.js`, `i18n.js`, `forms.js`, `site.js`, `prices.js`, `criollo.js`) o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash

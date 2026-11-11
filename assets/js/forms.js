@@ -240,6 +240,16 @@
     }
     indexItems();
 
+    // Options with `hidden: true` (menu.js) have no select: the first choice is picked automatically and they are left out of
+    // order texts (the criollo plate's Regular/Combo option while the Combo is off).
+    function shownOptions(it) { return (it.options || []).filter((o) => !o.hidden); }
+    function autoValue(o) { return o.hidden ? (o.choices[0] || '') : ''; }
+    function optsText(l) { // chosen values of the visible options, in menu order
+      const it = allItems[l.id];
+      if (!it) return Object.values(l.opts).filter(Boolean);
+      return shownOptions(it).map((o) => l.opts[o.key]).filter(Boolean);
+    }
+
     function renderPicker() {
       if (TFC.pricesPending) { // prices.js is still reading the owner's sheet (1.5 s at most); it re-renders when done
         picker.innerHTML = `<p class="menu-loading" role="status">${L('Cargando el menú…', 'Loading the menu…')}</p>`;
@@ -287,6 +297,7 @@
         const soonIds = new Set(); // dishes of stations or dishes in config.comingSoon
         window.TFC_MENU.forEach((s) => s.sections.forEach((sec) => sec.items.forEach((it) => { if (TFC.isSoon(s.id) || TFC.isSoon(it.id)) soonIds.add(it.id); })));
         const soonNames = [], goneNames = [];
+        let lostOption = false; // a saved choice that is no longer offered (e.g. a nachos style that was removed) comes back blank: say so
         saved.cart.forEach((l) => {
           const it = l && allItems[l.id];
           if (!it || it.available === false) { // the 'tfc:prices' handler reconciles anything the sheet changes later
@@ -294,13 +305,14 @@
             return;
           }
           const opts = {};
-          (it.options || []).forEach((o) => { const v = l.opts && l.opts[o.key]; opts[o.key] = o.choices.includes(v) ? v : ''; });
+          (it.options || []).forEach((o) => { const v = l.opts && l.opts[o.key]; if (o.choices.includes(v)) opts[o.key] = v; else { opts[o.key] = autoValue(o); if (v && !o.hidden) lostOption = true; } });
           cart.push({ uid: Math.random().toString(36).slice(2), id: l.id, name: it.name, qty: Math.max(1, Math.min(99, parseInt(l.qty, 10) || 1)), opts, note: String(l.note || '').slice(0, 140) });
         });
         // Tell the customer what a saved cart lost (e.g. a dish added before it was marked «Próximamente»).
         cartNotice = [
           soonNames.length ? L(`${soonNames.join(', ')}: ${soonNames.length > 1 ? 'llegan' : 'llega'} muy pronto; por ahora se quitó de tu pedido.`, `${soonNames.join(', ')}: coming soon; removed from your order for now.`) : '',
           goneNames.length ? L(`${goneNames.join(', ')}: ya no está disponible y se quitó de tu pedido.`, `${goneNames.join(', ')}: no longer available, removed from your order.`) : '',
+          lostOption ? L('Una opción de tu pedido ya no está disponible; elige otra.', 'An option in your order is no longer available; choose another.') : '',
         ].filter(Boolean).join(' ');
       } catch (e) { /* storage unavailable or an older format */ }
     }
@@ -315,11 +327,11 @@
     function add(id) {
       const it = allItems[id];
       cartNotice = '';
-      let line = (it.options || []).length ? null : cart.find((l) => l.id === id); // same simple item → bump qty
+      let line = shownOptions(it).length ? null : cart.find((l) => l.id === id); // same simple item → bump qty
       if (line) line.qty = Math.min(99, line.qty + 1);
       else {
         const opts = {};
-        (it.options || []).forEach((o) => { opts[o.key] = ''; }); // customer must choose (no silent defaults)
+        (it.options || []).forEach((o) => { opts[o.key] = autoValue(o); }); // customer must choose (no silent defaults), except hidden options
         line = { uid: Math.random().toString(36).slice(2), id, name: it.name, qty: 1, opts, note: '' };
         cart.push(line);
       }
@@ -333,7 +345,7 @@
 
     function showToast(it) {
       if (!toast) return;
-      const needsChoice = (it.options || []).length > 0;
+      const needsChoice = shownOptions(it).length > 0;
       toast.innerHTML = `<span>✓ ${esc(tr(it.name))} · ${count()} ${L('art.', count() === 1 ? 'item' : 'items')}</span>
         <button type="button" data-toast-go>${needsChoice ? L('Elegir opciones', 'Choose options') : L('Ver pedido', 'View order')}</button>`;
       toast.hidden = false;
@@ -370,7 +382,7 @@
             </div>
             <button type="button" class="cart-remove" data-remove aria-label="${L('Quitar', 'Remove')}: ${name}">✕</button>
           </div>
-          ${(it.options || []).length ? `<div class="cart-opts">${it.options.map((o) => `
+          ${shownOptions(it).length ? `<div class="cart-opts">${shownOptions(it).map((o) => `
             <label>${esc(TFC.pick(o.label))}
               <select name="cart-opt" data-opt="${o.key}" aria-label="${esc(TFC.pick(o.label))}: ${name}" required>
                 <option value="">${L('Elige…', 'Choose…')}</option>
@@ -419,7 +431,7 @@
         <small>${L('IVU no incluido', 'IVU (sales tax) not included')}${t.unpriced ? L(' · hay artículos al precio del mostrador', ' · some items at counter price') : ''}${t.pending ? L(' · elige las opciones que faltan', ' · choose the missing options') : ''}</small>`;
     }
     function lineText(l, withNote) {
-      const opts = Object.values(l.opts).filter(Boolean).join(', ');
+      const opts = optsText(l).join(', ');
       const p = linePrice(l);
       const price = p === null ? (withNote ? ' — precio en mostrador' : L(' — precio en mostrador', ' — counter price')) : p === undefined ? '' : ` — ${TFC.money(p)}`; // kitchen lines (withNote) stay in Spanish
       return `${l.qty} × ${l.name}${opts ? ` (${opts})` : ''}${price}${withNote && l.note ? ` · ${l.note}` : ''}`;
@@ -518,7 +530,10 @@
       for (let i = cart.length - 1; i >= 0; i--) {
         const l = cart[i], it = allItems[l.id];
         if (!it || it.available === false) { gone.unshift(l); cart.splice(i, 1); continue; }
-        (it.options || []).forEach((o) => { if (l.opts[o.key] && !o.choices.includes(l.opts[o.key])) { l.opts[o.key] = ''; cleared.push(l); } });
+        (it.options || []).forEach((o) => {
+          if (o.hidden) { l.opts[o.key] = autoValue(o); return; }
+          if (l.opts[o.key] && !o.choices.includes(l.opts[o.key])) { l.opts[o.key] = ''; cleared.push(l); }
+        });
       }
       const oldList = picker.querySelector('.pick-list');
       const scrollTop = oldList ? oldList.scrollTop : 0;
@@ -530,8 +545,9 @@
       if (focusSel) { const el = picker.querySelector(focusSel); if (el) el.focus({ preventScroll: true }); }
       const after = cart.map((l) => linePrice(l));
       const repriced = !gone.length && !cleared.length && before.some((p, i) => p !== after[i]);
-      if (gone.length) cartNotice = L(`${gone.map((l) => tr(l.name)).join(', ')}: ya no está disponible y se quitó de tu pedido.`, `${gone.map((l) => tr(l.name)).join(', ')}: no longer available, removed from your order.`);
-      else if (cleared.length) cartNotice = L('Una opción de tu pedido ya no está disponible; elige otra.', 'An option in your order is no longer available; choose another.');
+      const goneNote = gone.length ? L(`${gone.map((l) => tr(l.name)).join(', ')}: ya no está disponible y se quitó de tu pedido.`, `${gone.map((l) => tr(l.name)).join(', ')}: no longer available, removed from your order.`) : '';
+      const clearedNote = cleared.length ? L('Una opción de tu pedido ya no está disponible; elige otra.', 'An option in your order is no longer available; choose another.') : '';
+      if (goneNote || clearedNote) cartNotice = [goneNote, clearedNote].filter(Boolean).join(' '); // both can happen at once (a drink hidden that was an extra line AND a plate's drink)
       else if (repriced) cartNotice = L('Los precios se actualizaron; revisa tu pedido.', 'Prices were updated; please review your order.');
       renderCart();
       if (cartNotice && live) live.textContent = cartNotice;
@@ -605,7 +621,7 @@
             `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu pedido ${ref}.\n\nPedido:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Recoger en' : 'Entrega'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\nSubtotal: ${subtotalEs}\nPago ${pickup ? 'al recoger' : 'al recibir'}: ${f.pago}\n\nTe confirmaremos el total y la hora por ${f.confirmar_por || 'teléfono o email'} antes de preparar tu pedido.${emp ? ' Recuerda tener tu identificación de empleado a la mano.' : ''}\n\n— Tu Food Court · Metro Medical Center`,
             `Thanks, ${cleanName(f.nombre)}! We received your order ${ref}.\n\nOrder:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Pick up at' : 'Deliver to'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\nSubtotal: ${subtotalEn}\nPay ${pickup ? 'at pickup' : 'on delivery'}: ${f.pago}\n\nWe'll confirm the total and time by ${f.confirmar_por || 'phone or email'} before preparing your order.${emp ? ' Please have your employee ID ready.' : ''}\n\n— Tu Food Court · Metro Medical Center`),
         });
-        const summaryHtml = `<ul>${cart.map((l) => { const p = linePrice(l); return `<li>${esc(l.qty)} × ${esc(tr(l.name))}${Object.values(l.opts).filter(Boolean).length ? ` (${Object.values(l.opts).filter(Boolean).map((v) => esc(tr(v))).join(', ')})` : ''}${p == null ? '' : ` — ${TFC.money(p)}`}${l.note ? ` · ${esc(l.note)}` : ''}</li>`; }).join('')}</ul>
+        const summaryHtml = `<ul>${cart.map((l) => { const p = linePrice(l); return `<li>${esc(l.qty)} × ${esc(tr(l.name))}${optsText(l).length ? ` (${optsText(l).map((v) => esc(tr(v))).join(', ')})` : ''}${p == null ? '' : ` — ${TFC.money(p)}`}${l.note ? ` · ${esc(l.note)}` : ''}</li>`; }).join('')}</ul>
           <p><strong>Subtotal:</strong> ${esc(L(subtotalEs, subtotalEn))}</p>
           <p><strong>${pickup ? L('Recoger en', 'Pick up at') : L('Entrega', 'Deliver to')}:</strong> ${esc(pickup ? pickupPlace : f.entrega)} · ${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))}</p>
           <p><strong>${L('Te confirmamos por', 'We confirm by')}:</strong> ${esc(tr(f.confirmar_por || ''))}</p>`;

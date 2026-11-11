@@ -29,32 +29,35 @@
   TFC.soonTag = () => `<span class="soon-tag">${lang === 'en' ? 'Coming soon' : 'Próximamente'}</span>`;
 
   // ---------- prices ----------
-  const adjust = (n) => {
+  const adjust = (n, it) => {
+    if (it && it.exact) return n; // drinks: the price is final as written ($1.50 stays $1.50), no +% and no .99 rounding
     let v = n * (1 + (C.priceAdjustPercent || 0) / 100);
     if (C.priceRounding === 'up99') v = Math.ceil(v - 0.99 - 1e-9) + 0.99; // 12.45 → 12.99, 9.34 → 9.99, 12.99 stays
     return Math.round(v * 100) / 100;
   };
-  TFC.money = (n) => (n == null ? '' : '$' + (Number.isInteger(n) ? String(n) : n.toFixed(2)));
+  TFC.money = (n) => (n == null ? '' : '$' + n.toFixed(2));
   // Unit price for an item with the chosen options: number, null = not priced yet, undefined = option not chosen yet.
   TFC.price = (it, opts) => {
     if (it.priceBy) {
       const v = opts && opts[it.priceBy];
       if (!v || !Object.prototype.hasOwnProperty.call(it.prices || {}, v)) return undefined; // not chosen, or no longer offered (prices sheet)
-      const p = it.prices[v]; return p == null ? null : adjust(p);
+      const p = it.prices[v]; return p == null ? null : adjust(p, it);
     }
-    return it.price == null ? null : adjust(it.price);
+    return it.price == null ? null : adjust(it.price, it);
   };
   // Menu label: "$9", or per-option "10\" $9 · 16\" $18"; '' when unpriced. An option without a price (sheet says
   // «mostrador») is left out of the label; the cart line says "precio en mostrador" once that option is chosen.
   const priced = (it) => Object.entries(it.prices || {}).filter(([, v]) => v != null);
+  // When the price option has no select (`hidden: true`, e.g. the plate while the Combo is off) the label is just the amount.
+  const named = (it) => !(it.options || []).some((o) => o.key === it.priceBy && o.hidden);
   TFC.priceLabel = (it) => {
-    if (it.priceBy) return priced(it).map(([k, v]) => `${TFC.tr(k)} ${TFC.money(adjust(v))}`).join(' · ');
-    return it.price == null ? '' : TFC.money(adjust(it.price));
+    if (it.priceBy) return priced(it).map(([k, v]) => `${named(it) ? TFC.tr(k) + ' ' : ''}${TFC.money(adjust(v, it))}`).join(' · ');
+    return it.price == null ? '' : TFC.money(adjust(it.price, it));
   };
   // Same label as HTML: each variant is an unbreakable span so long labels wrap between variants on phones.
   TFC.priceHtml = (it) => {
-    if (it.priceBy) return priced(it).map(([k, v]) => `<span class="var">${esc(TFC.tr(k))} ${TFC.money(adjust(v))}</span>`).join(' <span class="sep">·</span> ');
-    return it.price == null ? '' : TFC.money(adjust(it.price));
+    if (it.priceBy) return priced(it).map(([k, v]) => `<span class="var">${named(it) ? esc(TFC.tr(k)) + ' ' : ''}${TFC.money(adjust(v, it))}</span>`).join(' <span class="sep">·</span> ');
+    return it.price == null ? '' : TFC.money(adjust(it.price, it));
   };
 
   // Spanish lives in the HTML; English in TFC_EN keyed by data-i18n. Originals are cached so toggling back works.

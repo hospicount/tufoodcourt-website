@@ -1,9 +1,29 @@
 // Tu Food Court — menu data. Source: "MENU CON PRECIOS BAYAMON.xlsx" (2026-10-28).
 // Prices are in USD before IVU. `price` is a flat price; `priceBy` + `prices` make the price depend on one option
 // (e.g. pizza size). `price: null` = not priced yet (shown as "precio en mostrador", excluded from the subtotal).
+// `exact: true` = show the price exactly as written, skipping the +% / round-up-to-.99 rule (drinks).
+// An option with `hidden: true` has no select: its first choice is picked automatically and it is left out of order texts;
+// when it is also the `priceBy` option the price shows without the option name (the criollo plate while the Combo is off).
 // `orderable` items appear in the delivery/pickup picker. `options` render as required selects on each cart line.
 // Listed under Desayuno and Postres. It is one shared object, so a price or «Disponible» change in the sheet applies to both.
 const TFC_FRUTAS = { id: 'de-frutas', name: 'Ensalada de frutas', price: 7, orderable: true };
+
+// Drinks (owner list, 2026-11-11). They are sold in the «Bebidas» station AND are the choices of the «Bebida» select of the
+// criollo plate (`choicesFrom: 'bebidas'`): prices.js rebuilds that select from the drinks still available, so «Disponible = No»
+// on a drink's row of the «Precios» tab removes it from both places.
+// Prices (owner, 2026-11-11): every drink $1.50 except the water, $1.00. `exact: true` = the price is shown as typed, WITHOUT the
+// +3.8% / round-up-to-.99 rule (site.js adjust()), because that rule would turn $1.50 into $1.99. In the «Precios» tab the
+// «Precio base» of a drink is therefore its final price. The water has its own new id (not the old `bb-agua`) on purpose: the sheet
+// still has an old `bb-agua` row set to 0 (= counter price) that would otherwise override this price.
+const TFC_BEBIDAS = [
+  { id: 'bb-coca', name: 'Coca-Cola', price: 1.5 },
+  { id: 'bb-coca-zero', name: 'Coca-Cola Zero', price: 1.5 },
+  { id: 'bb-kola', name: 'Kola Champagne', price: 1.5 },
+  { id: 'bb-agua-botella', name: 'Agua', price: 1 },
+  { id: 'bb-malta', name: 'Malta India Light', price: 1.5 },
+  { id: 'bb-welchs-fresa-kiwi', name: "Welch's Strawberry Kiwi", price: 1.5 },
+  { id: 'bb-welchs-manzana', name: "Welch's Apple Juice", price: 1.5 },
+].map((b) => ({ ...b, exact: true, orderable: true }));
 
 window.TFC_MENU = [
   {
@@ -42,10 +62,21 @@ window.TFC_MENU = [
           en: 'Build your plate from today\'s line: rice, stew and protein of the day. Write your preference in the note and we confirm what\'s available.',
         },
         items: [
-          { id: 'cr-plato', name: 'Plato criollo del día', desc: { es: 'Arroz, guiso y proteína del día', en: 'Rice, stew and protein of the day' }, orderable: true,
-            options: [{ key: 'tipo', label: { es: 'Opción', en: 'Option' }, choices: ['Regular', 'Combo'] }],
-            priceBy: 'tipo', prices: { 'Regular': 11.99, 'Combo': 14.99 },
+          { id: 'cr-plato', name: 'Plato criollo del día', desc: { es: 'Arroz, guiso, proteína del día y bebida', en: 'Rice, stew, protein of the day and a drink' }, orderable: true,
+            options: [
+              // «Opción» (Regular / Combo) is OFF for now (owner, 2026-11-11: "Eliminate the Opción for now"). The plate has a single price,
+              // so this option is `hidden`: no select is shown and 'Regular' is chosen automatically (the sheet row «cr-plato / Regular»
+              // still sets the price). To bring the Combo back: choices ['Regular', 'Combo'], prices { 'Regular': 11.99, 'Combo': 14.99 }
+              // and delete `hidden: true`.
+              { key: 'tipo', label: { es: 'Opción', en: 'Option' }, choices: ['Regular'], hidden: true },
+              // The drink comes with the plate (2026-11-11). Same names as the «Bebidas» station; see TFC_BEBIDAS.
+              { key: 'bebida', label: { es: 'Bebida', en: 'Drink' }, choices: TFC_BEBIDAS.map((b) => b.name), choicesFrom: 'bebidas' },
+            ],
+            priceBy: 'tipo', prices: { 'Regular': 11.99 },
             notePh: { es: 'Ej.: arroz con gandules, habichuelas, pollo', en: 'E.g.: rice with pigeon peas, beans, chicken' } },
+          // Added 2026-11-11 (owner: "the soup of the day for $5.99"). Base 5 → $5.99 with the site rule. Which soup it is comes from the
+          // «Sopa del Dia» column of the «Menú» tab (shown in the "Hoy en la línea criolla" card), so no option select here.
+          { id: 'cr-sopa', name: 'Sopa del día', desc: { es: 'La sopa que esté en la línea ese día', en: 'Whichever soup is on the line that day' }, price: 5, orderable: true },
         ],
       },
       {
@@ -118,9 +149,13 @@ window.TFC_MENU = [
       {
         title: { es: 'Nachos, papas y burger', en: 'Nachos, potatoes & burger' },
         items: [
-          { id: 'na-nachos', name: 'Nachos', orderable: true, // styles come from the «Precios» tab (only Carne while the menu is limited)
-            options: [{ key: 'estilo', label: { es: 'Estilo', en: 'Style' }, choices: ['Regular', 'Carne', 'Pollo', 'Cerdo'] }],
-            priceBy: 'estilo', prices: { 'Regular': 8, 'Carne': 12, 'Pollo': 12, 'Cerdo': 12 } },
+          { id: 'na-nachos', name: 'Nachos', orderable: true, // styles: the «Precios» tab hides Regular and Cerdo; Carne and Carnitas are sold at $12.99 (base 12)
+            options: [{ key: 'estilo', label: { es: 'Estilo', en: 'Style' }, choices: ['Regular', 'Carne', 'Carnitas', 'Cerdo'] }],
+            priceBy: 'estilo', prices: { 'Regular': 8, 'Carne': 12, 'Carnitas': 12, 'Cerdo': 12 } },
+          // Chicken nachos are «Próximamente» (owner, 2026-11-11): a separate dish listed in config.comingSoon, so it shows the tag instead of
+          // a price and cannot be ordered. When chicken is ready: remove 'na-nachos-pollo' from comingSoon and delete this item (or move
+          // 'Pollo' back into the choices and prices of na-nachos above).
+          { id: 'na-nachos-pollo', name: 'Nachos de pollo', price: 12, orderable: true },
           { id: 'lp-potato', name: 'Loaded Potato', desc: { es: 'Carne, cerdo o pollo', en: 'Beef, pork or chicken' }, orderable: true,
             options: [{ key: 'proteina', label: { es: 'Proteína', en: 'Protein' }, choices: ['Carne', 'Cerdo', 'Pollo'] }],
             priceBy: 'proteina', prices: { 'Carne': 11, 'Cerdo': 10, 'Pollo': 10 } },
@@ -132,7 +167,7 @@ window.TFC_MENU = [
         items: [
           { id: 'ap-guac', name: 'Guacamole', price: 6, orderable: true },
           { id: 'ap-pico', name: 'Pico de gallo', price: 3, orderable: true },
-          { id: 'ap-cielito', name: 'Cielito Lindo con chips', price: null, orderable: true }, // added 2026-11-04; price not set yet → «precio en mostrador» until the owner types it in the «Precios» tab
+          { id: 'ap-cielito', name: 'Cielito Lindo con chips', price: 6, orderable: true }, // added 2026-11-04; owner 2026-11-11: $6.99 (base 6 with the site rule); the «Precios» row has Precio base blank, so this value applies
         ],
       },
     ],
@@ -169,6 +204,7 @@ window.TFC_MENU = [
           { id: 'po-flan', name: 'Flan de guava y queso', price: 6, orderable: true },
           { id: 'po-tres-leches', name: 'Tres leches', price: 7, orderable: true },
           { id: 'po-choco', name: 'Choco Fudge Cake', price: 8, orderable: true },
+          { id: 'po-carrot', name: 'Carrot Cake', price: 8, orderable: true }, // added 2026-11-11 (owner: $8.99, base 8 with the site rule)
         ],
       },
     ],
@@ -178,15 +214,11 @@ window.TFC_MENU = [
     station: { es: 'Bebidas', en: 'Drinks' },
     tagline: { es: 'Refrescos, jugos y agua', en: 'Sodas, juices and water' },
     color: 'cream',
-    hideOnMenu: true,
     sections: [
       {
         title: { es: 'Bebidas', en: 'Drinks' },
-        items: [
-          { id: 'bb-refresco', name: 'Refresco en lata', price: null, orderable: true },
-          { id: 'bb-jugo', name: 'Jugo embotellado', price: null, orderable: true },
-          { id: 'bb-agua', name: 'Agua embotellada', price: null, orderable: true },
-        ],
+        note: { es: 'La bebida de tu plato criollo se escoge en las opciones del plato. Aquí puedes añadir una adicional.', en: 'The drink for your criollo plate is chosen in the plate\'s options. Add an extra one here.' },
+        items: TFC_BEBIDAS,
       },
     ],
   },

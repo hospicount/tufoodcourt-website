@@ -20,9 +20,10 @@ window.TFC_CONFIG = {
   // A dish shows «Próximamente» instead of its price and cannot be ordered. To open one, remove its id here
   // (for a station also rewrite the "muy pronto" sentences: README → Estaciones y platos próximamente).
   comingSoon: [
-    'pizza',                                    // station (Mexicano opens 2026-11-05 with a limited menu: the «Precios» tab hides everything but nachos and Cielito Lindo)
+    'pizza',                                    // station (Mexicano opens 2026-11-05 with a limited menu: the «Precios» tab hides everything but nachos Carne/Carnitas and Cielito Lindo)
     'catering-tacos',                           // the «Barra de tacos» option of the catering form stays disabled while the Mexican station sells nachos only
-    'po-flan', 'po-tres-leches', 'po-choco',    // desserts (the fruit salad is the dessert available now)
+    'po-flan', 'po-tres-leches',                // desserts (available now: fruit salad, Choco Fudge Cake and Carrot Cake)
+    'na-nachos-pollo',                          // chicken nachos (Carne and Carnitas nachos are sold now)
   ],
 
   // Opening hours — single source for the footer, the "Visítanos" card and the order time windows.
@@ -50,6 +51,7 @@ window.TFC_CONFIG = {
   // before IVU). Owner rule (2026-10-28): add 3.8% to every base price, then round UP to the next .99
   // (e.g. $11.99 → $12.45 → $12.99). Set percent to 0 and rounding to 'none' to show the base prices exactly as listed.
   // If you change this rule, also update the «Precio en el sitio» formula in the sheet (it only previews the rule).
+  // Exception: items with `exact: true` in menu.js (the drinks: $1.50 / water $1.00) are shown exactly as written, with no % and no rounding.
   priceAdjustPercent: 3.8,
   priceRounding: 'up99', // 'up99' | 'none'
   paymentOptions: ['ATH Móvil', 'Tarjeta de crédito', 'Efectivo'], // Spanish values; EN display in i18n.js TFC_EN_VALUES

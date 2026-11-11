@@ -1,7 +1,7 @@
 // Tu Food Court — prices and availability from the owner's Google Sheet (tab «Precios»).
 // menu.js keeps the built-in base prices. This file overlays the sheet's «Precio base» (still BEFORE the +% / .99
 // rule applied in site.js) and hides what the owner marks «Disponible = No». One row per item, or per option when the
-// price depends on it (pizza size, Regular/Combo…). Nothing here is required: no sheet, no access, a bad cell or a slow
+// price depends on it (pizza size, with/without chicken…). Nothing here is required: no sheet, no access, a bad cell or a slow
 // network → the built-in menu shows. Must load after menu.js and before site.js / forms.js.
 //
 // Transport note: the gviz CSV endpoint types every column by its majority (E «Precio base» = number, G «Disponible» =
@@ -127,9 +127,27 @@
     return out;
   }
 
+  // An option with `choicesFrom: '<station id>'` (the plate's «Bebida» select) offers the names of that station's dishes that are
+  // still available, so «Disponible = No» on a drink also removes it from the select. If the sheet hides every one of them the
+  // full built-in list stays (an empty required select would make the plate impossible to order) and the console says so.
+  function syncChoices() {
+    MENU.forEach((s) => (s.sections || []).forEach((sec) => (sec.items || []).forEach((it) => (it.options || []).forEach((o) => {
+      if (!o.choicesFrom) return;
+      const src = MENU.find((x) => x.id === o.choicesFrom);
+      if (!src) { warn(`la opción «${o.key}» de «${nameOf(it)}» apunta a la estación «${o.choicesFrom}», que no existe en menu.js`); return; }
+      const names = [];
+      (src.sections || []).forEach((ss) => (ss.items || []).forEach((d) => { if (d && d.available !== false) names.push(nameOf(d)); }));
+      if (names.length) o.choices = names;
+      else warn(`todas las opciones de «${o.key}» están en No; se deja la lista completa para no bloquear «${nameOf(it)}»`);
+    }))));
+  }
+
   // ---------- entries → menu ----------
   function apply(entries) {
     reset();
+    try { return applyEntries(entries); } finally { syncChoices(); }
+  }
+  function applyEntries(entries) {
     let n = 0;
     const seen = Object.create(null); // "code|option" → first line: a repeated row never overrides the first one
     (entries || []).forEach((e) => {

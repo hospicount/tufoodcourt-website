@@ -138,7 +138,8 @@
 
   // ---------- rendering ----------
   const LABELS_EN = { arroz: 'Rice', arroces: 'Rice', guiso: 'Stew', guisos: 'Stew', proteina: 'Protein', proteinas: 'Proteins', carne: 'Meat', carnes: 'Meats', acompanante: 'Side', acompanantes: 'Sides', sopa: 'Soup', sopas: 'Soups', ensalada: 'Salad', postre: 'Dessert', postres: 'Desserts', especial: 'Special', nota: 'Note', notas: 'Notes', bebida: 'Drink', bebidas: 'Drinks', vegetales: 'Vegetables' };
-  const label = (h) => (lang() === 'en' && LABELS_EN[norm(h)]) || h;
+  // «Sopa del Dia» is typed without the accent in the sheet: show it correctly (and translated) whichever way it is spelled.
+  const label = (h) => (norm(h) === 'sopa del dia' ? L('Sopa del día', 'Soup of the day') : (lang() === 'en' && LABELS_EN[norm(h)]) || h);
 
   function dayLabel(day) {
     try {

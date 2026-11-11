@@ -15,13 +15,14 @@ function run(argv) {
   const C = window.TFC_CONFIG, pct = C.priceAdjustPercent || 0, k = 1 + pct / 100;
   const rows = [['Código', 'Estación', 'Plato', 'Opción', 'Precio base', 'Precio en el sitio', 'Disponible']];
   // Informational preview of what the site shows: same as adjust() in site.js; 0 = «mostrador» (counter price).
-  const formula = (r) => `=IF(ISNUMBER(E${r}),IF(E${r}=0,"mostrador",${C.priceRounding === 'up99' ? `CEILING(E${r}*${k}-0.99-0.000000001,1)+0.99` : `ROUND(E${r}*${k},2)`}),"")`;
+  // Items with exact:true (drinks) show their price as typed, without the rule: their formula just echoes «Precio base».
+  const formula = (r, exact) => `=IF(ISNUMBER(E${r}),IF(E${r}=0,"mostrador",${exact ? `E${r}` : C.priceRounding === 'up99' ? `CEILING(E${r}*${k}-0.99-0.000000001,1)+0.99` : `ROUND(E${r}*${k},2)`}),"")`;
   const seen = new Set(); // a dish listed under two stations (Ensalada de frutas) gets one row
   window.TFC_MENU.forEach((s) => s.sections.forEach((sec) => (sec.items || []).forEach((it) => {
     if (seen.has(it.id)) return;
     seen.add(it.id);
     const name = typeof it.name === 'string' ? it.name : it.name.es;
-    const line = (opt, price) => rows.push([it.id, s.station.es, name, opt, price == null ? 0 : price, formula(rows.length + 1), '']); // null price (drinks) → 0 = mostrador
+    const line = (opt, price) => rows.push([it.id, s.station.es, name, opt, price == null ? 0 : price, formula(rows.length + 1, !!it.exact), '']); // null price → 0 = mostrador
     if (it.priceBy) Object.keys(it.prices).forEach((o) => line(o, it.prices[o]));
     else line('', it.price);
   })));

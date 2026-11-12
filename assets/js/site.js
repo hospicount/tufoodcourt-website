@@ -180,14 +180,15 @@
     const a = fmt12(s), b = fmt12(e);
     return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`;
   }
-  const dayHours = (dow) => { const h = C.schedule[dow]; return h ? [toMin(h[0]), toMin(h[1])] : null; };
+  const dayHours = (dow) => { const h = C.schedule[dow]; return Array.isArray(h) ? [toMin(h[0]), toMin(h[1])] : null; }; // null for a closed or «soon» day
+  const dayState = (dow) => (Array.isArray(C.schedule[dow]) ? 'open' : C.schedule[dow] === 'soon' ? 'soon' : 'closed');
   // Consecutive days with identical hours are grouped: "Lunes a viernes · 6:00 AM – 3:00 PM".
   function dayGroups() {
     const groups = [];
     [1, 2, 3, 4, 5, 6, 0].forEach((d) => {
       const key = JSON.stringify(C.schedule[d] || null);
       const last = groups[groups.length - 1];
-      if (last && last.key === key) last.days.push(d); else groups.push({ key, days: [d], hours: dayHours(d) });
+      if (last && last.key === key) last.days.push(d); else groups.push({ key, days: [d], hours: dayHours(d), state: dayState(d) });
     });
     return groups;
   }
@@ -200,9 +201,9 @@
     return first;
   }
   function hoursLines() {
-    return dayGroups().map((g) => g.hours
+    return dayGroups().map((g) => (g.hours
       ? `${groupLabel(g)} · ${fmt12(g.hours[0])} – ${fmt12(g.hours[1])}`
-      : `${groupLabel(g)} · ${lang === 'en' ? 'closed' : 'cerrado'}`);
+      : `${groupLabel(g)} · ${g.state === 'soon' ? (lang === 'en' ? 'coming soon' : 'próximamente') : (lang === 'en' ? 'closed' : 'cerrado')}`));
   }
   function lastCallText() {
     const parts = dayGroups().filter((g) => g.hours).map((g) => {
@@ -214,7 +215,7 @@
       ? `Same-day orders: ${parts.join(', ')}. You can also schedule for another day.`
       : `Pedidos para el mismo día: ${parts.join(' y ')}. También puedes programar tu pedido para otro día.`;
   }
-  TFC.time = { toMin, fmt12, fmtRange, dayHours, dayName: (d) => DAY_NAMES[lang][d], hoursLines, lastCallText };
+  TFC.time = { toMin, fmt12, fmtRange, dayHours, dayState, dayName: (d) => DAY_NAMES[lang][d], hoursLines, lastCallText };
 
   // ---------- config bindings ----------
   function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -242,6 +243,10 @@
     document.querySelectorAll('[data-cfg-hours-inline]').forEach((el) => { el.textContent = hoursLines().join(' · '); });
     document.querySelectorAll('[data-cfg-maps]').forEach((a) => {
       a.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(C.mapsQuery);
+    });
+    document.querySelectorAll('[data-cfg-tel]').forEach((a) => { // phone link inside a translated sentence
+      a.hidden = !C.phone;
+      if (C.phone) { a.href = 'tel:' + C.phone.replace(/[^\d+]/g, ''); a.textContent = C.phone; }
     });
     document.querySelectorAll('[data-cfg-contact]').forEach((el) => {
       const lines = [];

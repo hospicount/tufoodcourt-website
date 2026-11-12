@@ -139,7 +139,7 @@ window.TFC_EN = {
   'd.notesPh': 'Allergies, how to find you, etc.',
   'd.confirm': 'I confirm I am a Metro Medical Center employee and will show my ID when receiving my order.',
   'd.submit': 'Send order',
-  'd.fine': 'You\'ll get a copy by email. We use your details only to prepare and deliver your order. <a href="/privacidad/">Privacy</a>.',
+  'd.fine': 'After you send it you\'ll see your reference number, and we confirm the total and time. We use your details only to prepare and deliver your order. <a href="/privacidad/">Privacy</a>. Trouble sending? Call us at <a data-cfg-tel href="#"></a>.',
   'd.doneT': 'Order received!',
   'd.done': 'We\'ll contact you to confirm the total and time. Keep your reference number.',
   'd.again': 'Place another order',
@@ -190,9 +190,9 @@ window.TFC_EN = {
   'c.notes': 'Tell us more <span class="hint">(optional)</span>',
   'c.notesPh': 'Dishes you\'d like, setup time, whether you need utensils, etc.',
   'c.submit': 'Request a quote',
-  'c.fine': 'No commitment. You\'ll get a copy by email and we reply within one business day. <a href="/privacidad/">Privacy</a>.',
+  'c.fine': 'No commitment. After you send it you\'ll see your reference number and we reply within one business day. <a href="/privacidad/">Privacy</a>. Trouble sending? Call us at <a data-cfg-tel href="#"></a>.',
   'c.doneT': 'Request received!',
-  'c.done': 'We\'ll send your quote within one business day. Need it sooner? Reply to the confirmation email and we\'ll prioritize it.',
+  'c.done': 'We\'ll send your quote within one business day. Need it sooner? Call us at <a data-cfg-tel href="#"></a> with your reference number and we\'ll prioritize it.',
 
   // qr page
   'q.title': 'Printable QR material',
@@ -225,7 +225,7 @@ window.TFC_EN = {
     </ul>
     <p>We don't use your information for marketing without your consent, and we don't sell it or share it with third parties for their own purposes.</p>
     <h2>How it is transmitted and stored</h2>
-    <p>Forms are relayed through the form service <a href="https://formsubmit.co" target="_blank" rel="noopener">FormSubmit</a>, which delivers the content to our mailbox and sends you a confirmation copy. The information stays in our email and is kept only as long as needed to handle your request and meet accounting obligations.</p>
+    <p>Forms are relayed through the form service <a href="https://formsubmit.co" target="_blank" rel="noopener">FormSubmit</a>, which delivers the content to our mailbox. The information stays in our email and is kept only as long as needed to handle your request and meet accounting obligations.</p>
     <h2>Your rights</h2>
     <p>You can ask us at any time to correct or delete your information by writing to <a data-cfg-mail href="#"></a>. If you are under 18, please have an adult send the request for you.</p>
     <h2>Changes</h2>

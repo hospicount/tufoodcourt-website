@@ -8,7 +8,7 @@ window.TFC_CONFIG = {
   formEmail: 'info@tufoodcourtpr.com',
 
   // Contact details shown on the site. Leave '' to hide a line.
-  phone: '',          // TODO e.g. '787-000-0000'
+  phone: '787-449-1530', // shown in the contact card, the form footers and the «no se envió» box
   email: 'info@tufoodcourtpr.com',
   instagram: '',      // TODO e.g. 'tufoodcourtpr'
   facebook: '',       // TODO
@@ -27,22 +27,25 @@ window.TFC_CONFIG = {
   ],
 
   // Opening hours — single source for the footer, the "Visítanos" card and the order time windows.
-  // 0 = Sunday … 6 = Saturday; null = closed; 24-hour "HH:MM".
+  // 0 = Sunday … 6 = Saturday. Each day is ['HH:MM', 'HH:MM'] (24-hour open, close), null = closed,
+  // or 'soon' = shown as «próximamente» / "coming soon" (not orderable, like a closed day). To open Saturdays later,
+  // replace 'soon' with e.g. ['08:00', '13:00'] — the footer, the order windows and the last call follow by themselves
+  // (also update the OpeningHoursSpecification JSON-LD at the top of index.html, which search engines read).
   schedule: {
     0: null,
-    1: ['06:00', '14:00'],
-    2: ['06:00', '14:00'],
-    3: ['06:00', '14:00'],
-    4: ['06:00', '14:00'],
-    5: ['06:00', '14:00'],
-    6: ['08:00', '13:00'],
+    1: ['06:00', '15:00'],
+    2: ['06:00', '15:00'],
+    3: ['06:00', '15:00'],
+    4: ['06:00', '15:00'],
+    5: ['06:00', '15:00'],
+    6: 'soon',
   },
   locationName: 'Metro Medical Center',
   locationArea: { es: 'Food Court · Bayamón, Puerto Rico', en: 'Food Court · Bayamón, Puerto Rico' },
   mapsQuery: 'Metro Medical Center Bayamón Puerto Rico',
 
   // Delivery (Metro Medical Center employees only) and pickup orders
-  lastCallMinutesBeforeClose: 30, // same-day orders until 1:30 PM Mon–Fri and 12:30 PM Sat
+  lastCallMinutesBeforeClose: 30, // same-day orders until 2:30 PM Mon–Fri (30 min before the 3:00 PM close)
   slotMinutes: 30,                // length of each time window offered
   orderLeadMinutes: 30,           // today's windows ending sooner than this are greyed out
   maxAdvanceDays: 14,             // how far ahead an order can be scheduled

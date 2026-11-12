@@ -53,11 +53,28 @@
   function clean(s, max) { return String(s || '').replace(/https?:\/\/\S+|www\.\S+|\S+@\S+/gi, '').replace(/\s+/g, ' ').trim().slice(0, max); }
   function cleanName(s) { return clean(s, 40).replace(/[^\p{L}\p{M}' .-]/gu, '').trim() || L('hola', 'hello'); }
 
+  // Phone numbers: accept what people really type or paste (extensions, "ext.", two numbers, en-dashes, the invisible
+  // direction marks iOS adds when a number is copied from Contacts). Valid = 7 to 20 digits; the owner gets it cleaned.
+  function cleanPhone(s) {
+    return String(s || '').replace(/[​-‏‪-‮⁠-⁩﻿]/g, '').replace(/ /g, ' ').replace(/[‐-―−]/g, '-').replace(/\s+/g, ' ').trim();
+  }
+  function checkPhone(el) {
+    const digits = cleanPhone(el.value).replace(/\D/g, '').length;
+    el.setCustomValidity(!el.value.trim() || (digits >= 7 && digits <= 20) ? '' : L('Escribe un teléfono válido (ej. 787-000-0000).', 'Enter a valid phone number (e.g. 787-000-0000).'));
+  }
+
+  // A failed attempt keeps its Referencia: if the first try did reach the owner after all, the second email carries the same
+  // code and is obviously the same order. Forgotten once an order goes through.
+  const pendingRefs = {};
+  function refFor(prefix) { return pendingRefs[prefix] || (pendingRefs[prefix] = refCode(prefix)); }
+  function forgetRefs() { Object.keys(pendingRefs).forEach((k) => { delete pendingRefs[k]; }); }
+
   // ---------- validation ----------
   function message(el) {
     const v = el.validity;
     if (el.type === 'checkbox') return L('Requerido para continuar.', 'Required to continue.');
     if (v.customError) return el.validationMessage;
+    if (v.valueMissing && el.dataset.gone) return L('La hora que elegiste ya no está disponible; elige otra.', 'The time you chose is no longer available; please choose another.');
     if (v.valueMissing) return el.tagName === 'SELECT' ? L('Elige una opción.', 'Choose an option.') : L('Este campo es requerido.', 'This field is required.');
     if (v.typeMismatch && el.type === 'email') return L('Escribe un email válido.', 'Enter a valid email.');
     if (v.patternMismatch && el.type === 'tel') return L('Escribe un teléfono válido (ej. 787-000-0000).', 'Enter a valid phone number (e.g. 787-000-0000).');
@@ -74,6 +91,7 @@
     form.querySelectorAll('.field-error[data-dyn]').forEach((e) => e.remove()); // keep the static cart/stations messages
     form.querySelectorAll('[aria-invalid]').forEach((e) => e.removeAttribute('aria-invalid'));
     form.querySelectorAll('[aria-describedby]').forEach((e) => e.removeAttribute('aria-describedby'));
+    form.querySelectorAll('input[type=tel]').forEach(checkPhone);
     form.querySelectorAll('input, select, textarea').forEach((el) => {
       if (el.name === '_honey' || el.closest('[hidden]')) return;
       if (!el.checkValidity()) {
@@ -116,26 +134,35 @@
         e.detail = L('rechazado por el servicio', 'rejected by the service') + (data.message ? ': ' + String(data.message).slice(0, 80) : '');
         throw e;
       }
-      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.detail = 'HTTP ' + res.status; throw e; }
-      if (String(data.success) !== 'true') { const e = new Error('unexpected answer'); e.detail = L('respuesta inesperada del servicio', 'unexpected answer from the service'); throw e; }
+      // `maybeSent`: the service may have taken the order even though we got no clear answer (a 5xx, a page instead of JSON, a timeout).
+      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.detail = 'HTTP ' + res.status; e.maybeSent = res.status >= 500; throw e; }
+      if (String(data.success) !== 'true') { const e = new Error('unexpected answer'); e.detail = L('respuesta inesperada del servicio', 'unexpected answer from the service'); e.maybeSent = true; throw e; }
       return data;
     } catch (err) {
       if (err && err.detail) throw err;
       const e = new Error((err && err.message) || 'send failed'); // fetch's TypeError or the timeout's AbortError
-      e.detail = err && err.name === 'AbortError' ? L('el servicio tardó demasiado', 'the service took too long') : L('sin conexión con el servicio', 'no connection to the service');
+      if (err && err.name === 'AbortError') { e.detail = L('el servicio tardó demasiado', 'the service took too long'); e.timeout = true; e.maybeSent = true; }
+      else e.detail = L('sin conexión con el servicio', 'no connection to the service');
       throw e;
     } finally { clearTimeout(timer); }
   }
-  // A hiccup (no network for a second, a timeout, a 5xx or a bot-check page instead of JSON) gets one quiet retry.
-  // If the first attempt did reach the service and only its answer was lost, the owner gets the same order twice:
-  // both emails carry the same Referencia, so the duplicate is obvious. Losing an order is the worse outcome.
-  // Budgets: 20 s for the first attempt, 15 s for the retry, so the customer never waits more than ~37 s for an answer.
+  // FormSubmit has taken 24–40 s to answer on bad days, so the first attempt waits up to 45 s. A quick failure (no network for a
+  // second, a bot-check page instead of JSON, a 5xx) gets one quiet retry with whatever is left of a 60 s total. After a TIMEOUT
+  // there is no retry: the first request may still be in flight or already delivered, and sending again would only create a
+  // duplicate; the customer sees the «puede que sí llegó» message instead. Either way both emails carry the same Referencia.
+  const FIRST_MS = 45000, TOTAL_MS = 60000, MIN_RETRY_MS = 8000;
   async function send(payload, onRetry) {
-    try { return await postOnce(payload, 20000); } catch (err) {
-      if (err.final) throw err;
+    const t0 = Date.now();
+    try { return await postOnce(payload, FIRST_MS); } catch (err) {
+      if (err.final || err.timeout) throw err;
       await new Promise((r) => setTimeout(r, 1500));
+      const left = TOTAL_MS - (Date.now() - t0);
+      if (left < MIN_RETRY_MS) throw err;
       if (onRetry) onRetry();
-      return postOnce(payload, 15000);
+      try { return await postOnce(payload, left); } catch (err2) {
+        if (err.maybeSent) err2.maybeSent = true; // e.g. HTTP 500 first, then no connection: the first one may still have gone through
+        throw err2;
+      }
     }
   }
 
@@ -150,15 +177,29 @@
     done.scrollIntoView(scrollOpts('start'));
     done.focus({ preventScroll: true }); // a plain focus() re-centres the panel and hides the check mark under the header
   }
-  function showError(form, mailBody, subject, detail) {
+  // `err` is the failure from send(): `detail` is the short technical reason, `maybeSent` says the order may have arrived anyway.
+  function showError(form, mailBody, subject, err, ref) {
+    const detail = err && err.detail;
     const box = form.querySelector('[data-form-error]');
     box.hidden = false;
     const body = mailBody + (detail ? `\n\n[${L('Error al enviar desde la página', 'Error sending from the page')}: ${detail}]` : '');
     const mail = `mailto:${esc(C.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    const phone = C.phone ? L(` o llámanos al <a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">${esc(C.phone)}</a>`, ` or call us at <a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">${esc(C.phone)}</a>`) : '';
-    box.innerHTML = L(
-      `<strong>Tu solicitud NO se envió.</strong> Intenta de nuevo en un momento. Si sigue fallando, <a href="${mail}">envíala por email</a> con un toque (ya va escrita)${phone}.${detail ? `<br><small>Detalle técnico: ${esc(detail)}</small>` : ''}`,
-      `<strong>Your request was NOT sent.</strong> Try again in a moment. If it still fails, <a href="${mail}">send it by email</a> with one tap (it is already filled in)${phone}.${detail ? `<br><small>Technical detail: ${esc(detail)}</small>` : ''}`);
+    const tel = C.phone ? `<a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">${esc(C.phone)}</a>` : '';
+    const note = detail ? `<br><small>${L('Detalle técnico', 'Technical detail')}: ${esc(detail)}</small>` : '';
+    if (err && err.maybeSent) {
+      // No clear answer from the service: the order may well be in the owner's inbox. Say so, and point to the phone.
+      const call = tel ? L(`<a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">llámanos al ${esc(C.phone)}</a> para confirmar`, `<a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">call us at ${esc(C.phone)}</a> to check`) : '';
+      const refEs = ref ? ` Tu número de referencia: <strong>${esc(ref)}</strong>.` : '';
+      const refEn = ref ? ` Your reference number: <strong>${esc(ref)}</strong>.` : '';
+      box.innerHTML = L(
+        `<strong>No pudimos confirmar que tu solicitud se enviara.</strong> Puede que sí haya llegado.${refEs} Antes de enviarla otra vez, ${call ? call + ' o ' : ''}<a href="${mail}">envíala por email</a> (ya va escrita). Si la envías de nuevo no hay problema: lleva el mismo número de referencia y sabremos que es el mismo pedido.${note}`,
+        `<strong>We could not confirm that your request was sent.</strong> It may have arrived after all.${refEn} Before sending it again, ${call ? call + ' or ' : ''}<a href="${mail}">send it by email</a> (it is already filled in). Sending it again is fine: it carries the same reference number, so we will know it is the same order.${note}`);
+    } else {
+      const phone = tel ? L(` o llámanos al ${tel}`, ` or call us at ${tel}`) : '';
+      box.innerHTML = L(
+        `<strong>Tu solicitud NO se envió.</strong> Intenta de nuevo en un momento. Si sigue fallando, <a href="${mail}">envíala por email</a> con un toque (ya va escrita)${phone}.${note}`,
+        `<strong>Your request was NOT sent.</strong> Try again in a moment. If it still fails, <a href="${mail}">send it by email</a> with one tap (it is already filled in)${phone}.${note}`);
+    }
     box.scrollIntoView(scrollOpts());
     box.focus();
   }
@@ -169,10 +210,28 @@
       if (k.startsWith('cart-')) return;
       o[k] = o[k] ? o[k] + ', ' + v : v;
     });
+    if (o.telefono) o.telefono = cleanPhone(o.telefono);
     return o;
   }
 
   function wireSubmit(form, build) {
+    // A message stays on screen only while its field is still wrong: as soon as the customer fixes it, it goes away.
+    // (Radio groups and cart lines share one message, see validate(); date/time errors are re-evaluated by their own handlers first.)
+    function clearFixed(e) {
+      const el = e.target;
+      if (!el || !el.matches || !el.matches('input, select, textarea') || !el.hasAttribute('aria-invalid')) return;
+      if (el.type === 'tel') checkPhone(el);
+      const line = el.closest('.cart-line');
+      const id = 'err-' + el.name + (line ? line.dataset.uid : '');
+      const peers = [...form.querySelectorAll('[aria-invalid][aria-describedby]')].filter((p) => p.getAttribute('aria-describedby') === id);
+      if (!peers.every((p) => p.checkValidity())) return;
+      peers.forEach((p) => { p.removeAttribute('aria-invalid'); p.removeAttribute('aria-describedby'); });
+      const msg = document.getElementById(id);
+      if (msg && msg.dataset.dyn) msg.remove();
+    }
+    form.addEventListener('input', clearFixed);
+    form.addEventListener('change', clearFixed);
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       form.querySelector('[data-form-error]').hidden = true;
@@ -183,16 +242,25 @@
       btn.disabled = true;
       btn.dataset.label = btn.innerHTML;
       btn.textContent = L('Enviando…', 'Sending…');
-      const { payload, summaryHtml, plain } = build.payload();
+      let retrying = false;
+      const slow = setTimeout(() => { if (!retrying) btn.textContent = L('Sigue enviando… no cierres la página', 'Still sending… keep this page open'); }, 8000);
+      let built = null, sent = false;
       try {
-        await send(payload, () => { btn.textContent = L('Reintentando…', 'Retrying…'); });
-        if (build.after) build.after();
-        showDone(form, payload.Referencia, summaryHtml);
+        built = build.payload();
+        await send(built.payload, () => { retrying = true; btn.textContent = L('Reintentando…', 'Retrying…'); });
+        sent = true;
       } catch (err) {
-        showError(form, plain, payload._subject, err && err.detail);
+        const e2 = built ? err : { detail: L('no se pudo preparar el pedido', 'the order could not be prepared') };
+        showError(form, built ? built.plain : '', built ? built.payload._subject : 'Tu Food Court', e2, built && built.payload.Referencia);
       } finally {
+        clearTimeout(slow);
         btn.disabled = false;
         btn.innerHTML = btn.dataset.label;
+      }
+      if (sent) { // outside the try: a hiccup while tidying up must never turn a delivered order into an error message
+        try { if (build.after) build.after(); } catch (err) { /* storage unavailable */ }
+        forgetRefs();
+        showDone(form, built.payload.Referencia, built.summaryHtml);
       }
     });
   }
@@ -461,8 +529,9 @@
     const nowMin = () => { const p = prParts(); return +p.hour * 60 + +p.minute; };
     const plural = (n) => (TFC.lang() === 'en' ? n + 's' : (n.endsWith('s') ? n : n + 's'));
     function availability(iso) {
-      const h = T.dayHours(parseISO(iso).getDay());
-      if (!h) return { closed: true, slots: [], asap: false, open: 0 };
+      const dow = parseISO(iso).getDay();
+      const h = T.dayHours(dow);
+      if (!h) return { closed: true, soon: !!T.dayState && T.dayState(dow) === 'soon', slots: [], asap: false, open: 0 };
       const today = iso === todayISO(0);
       const last = h[1] - C.lastCallMinutesBeforeClose;
       const slots = [];
@@ -472,6 +541,14 @@
       const asap = today && nowMin() >= h[0] && nowMin() < last; // before opening, the regular windows are the honest offer
       return { closed: false, slots, asap, open: slots.filter((x) => !x.past).length + (asap ? 1 : 0) };
     }
+    let winDay = '';
+    function hintText(a) {
+      return a.soon ? L('Ese día todavía no abrimos (próximamente).', 'We are not open that day yet (coming soon).')
+        : a.closed ? L('Ese día estamos cerrados.', 'We are closed that day.')
+        : a.open === 0 ? L('Para hoy ya pasó la última llamada; elige otra fecha.', 'Today\'s last call has passed; pick another date.')
+        : win.dataset.gone && !win.value ? L('La hora que elegiste ya no está disponible; elige otra.', 'The time you chose is no longer available; please choose another.')
+        : L('Sujeta a disponibilidad; te confirmamos la hora exacta.', 'Subject to availability; we confirm the exact time.');
+    }
     function renderWindows() {
       const cur = win.value;
       const a = availability(date.value);
@@ -480,13 +557,17 @@
       a.slots.forEach((x) => opts.push(`<option value="${esc(x.label)}"${x.past ? ' disabled' : ''}${x.label === cur ? ' selected' : ''}>${esc(x.label)}${x.past ? L(' (ya pasó)', ' (passed)') : ''}</option>`));
       win.innerHTML = opts.join('');
       if (win.selectedIndex > 0 && win.options[win.selectedIndex].disabled) win.value = '';
+      // The time the customer chose can disappear while the page stays open (it passed, or last call came). Same day only:
+      // after a date change the empty choice is expected. Without this the only hint was a bare «Elige una opción.».
+      if (cur && !win.value && winDay === date.value) win.dataset.gone = cur; else if (win.value || winDay !== date.value) delete win.dataset.gone;
+      winDay = date.value;
       const dn = T.dayName(parseISO(date.value).getDay());
-      if (date.value && a.closed) date.setCustomValidity(L(`Los ${plural(dn)} estamos cerrados; elige otra fecha.`, `We're closed on ${plural(dn)}; pick another date.`));
+      if (date.value && a.soon) date.setCustomValidity(L(`Los ${plural(dn)} todavía no abrimos (próximamente); elige otra fecha.`, `We're not open on ${plural(dn)} yet (coming soon); pick another date.`));
+      else if (date.value && a.closed) date.setCustomValidity(L(`Los ${plural(dn)} estamos cerrados; elige otra fecha.`, `We're closed on ${plural(dn)}; pick another date.`));
       else date.setCustomValidity('');
-      winHint.textContent = a.closed ? L('Ese día estamos cerrados.', 'We are closed that day.')
-        : a.open === 0 ? L('Para hoy ya pasó la última llamada; elige otra fecha.', 'Today\'s last call has passed; pick another date.')
-        : L('Sujeta a disponibilidad; te confirmamos la hora exacta.', 'Subject to availability; we confirm the exact time.');
+      winHint.textContent = hintText(a);
     }
+    win.addEventListener('change', () => { delete win.dataset.gone; winHint.textContent = hintText(availability(date.value)); });
     // The first day that still has windows (after last call, or on a Sunday, that is the next open day).
     function firstOpenDay() {
       for (let i = 0; i <= C.maxAdvanceDays; i++) { const iso = todayISO(i); if (availability(iso).open > 0) return iso; }
@@ -580,7 +661,7 @@
         const f = fields(form);
         const pickup = isPickup();
         const emp = needsEmployee();
-        const ref = refCode(pickup ? 'R' : 'D');
+        const ref = refFor(pickup ? 'R' : 'D');
         const shortDate = parseISO(f.fecha).toLocaleDateString('es-PR', { weekday: 'short', day: 'numeric', month: 'short' });
         const when = `${fmtDate(f.fecha)} · ${f.ventana}`;
         const pickupPlace = L('Tu Food Court, food court de Metro Medical Center', 'Tu Food Court, Metro Medical Center food court');
@@ -697,7 +778,7 @@
       },
       payload() {
         const f = fields(form);
-        const ref = refCode('C');
+        const ref = refFor('C');
         const payload = {
           _subject: `🍽️ Catering ${ref} — ${f.nombre} · ${f.invitados} pers. · ${f.fecha_evento}`,
           _template: 'table',

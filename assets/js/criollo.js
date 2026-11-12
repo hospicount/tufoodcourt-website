@@ -57,8 +57,8 @@
     return dayOf(+p.year, +p.month, +p.day);
   }
   const fromISO = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); return m && validDay(+m[1], +m[2], +m[3]) ? dayOf(+m[1], +m[2], +m[3]) : null; };
-  // Closed per config.js schedule (0 = Sunday … 6 = Saturday, null = closed). No schedule = never closed.
-  const closedOn = (t) => !!C.schedule && C.schedule[t.dow] == null;
+  // Closed per config.js schedule (0 = Sunday … 6 = Saturday; null = closed, 'soon' = not open yet). No schedule = never closed.
+  const closedOn = (t) => !!C.schedule && !Array.isArray(C.schedule[t.dow]);
 
   // Date candidates for a text like "2026-11-03", "11/3/2026", "3/11", "3 de noviembre", "nov 3", "3".
   // Ambiguous a/b forms return both readings (US first); the caller disambiguates with the weekday when it has one.

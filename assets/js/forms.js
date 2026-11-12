@@ -93,7 +93,7 @@
     form.querySelectorAll('[aria-describedby]').forEach((e) => e.removeAttribute('aria-describedby'));
     form.querySelectorAll('input[type=tel]').forEach(checkPhone);
     form.querySelectorAll('input, select, textarea').forEach((el) => {
-      if (el.name === '_honey' || el.closest('[hidden]')) return;
+      if (el.name === '_honey' || el.closest('[hidden]') || (form.classList.contains('is-addon') && el.closest('[data-addon-hide]'))) return; // add-on mode reuses the sent details
       if (!el.checkValidity()) {
         el.setAttribute('aria-invalid', 'true');
         const line = el.closest('.cart-line');
@@ -178,7 +178,7 @@
     done.focus({ preventScroll: true }); // a plain focus() re-centres the panel and hides the check mark under the header
   }
   // `err` is the failure from send(): `detail` is the short technical reason, `maybeSent` says the order may have arrived anyway.
-  function showError(form, mailBody, subject, err, ref) {
+  function showError(form, mailBody, subject, err, ref, addon) {
     const detail = err && err.detail;
     const box = form.querySelector('[data-form-error]');
     box.hidden = false;
@@ -192,13 +192,13 @@
       const refEs = ref ? ` Tu número de referencia: <strong>${esc(ref)}</strong>.` : '';
       const refEn = ref ? ` Your reference number: <strong>${esc(ref)}</strong>.` : '';
       box.innerHTML = L(
-        `<strong>No pudimos confirmar que tu solicitud se enviara.</strong> Puede que sí haya llegado.${refEs} Antes de enviarla otra vez, ${call ? call + ' o ' : ''}<a href="${mail}">envíala por email</a> (ya va escrita). Si la envías de nuevo no hay problema: lleva el mismo número de referencia y sabremos que es el mismo pedido.${note}`,
-        `<strong>We could not confirm that your request was sent.</strong> It may have arrived after all.${refEn} Before sending it again, ${call ? call + ' or ' : ''}<a href="${mail}">send it by email</a> (it is already filled in). Sending it again is fine: it carries the same reference number, so we will know it is the same order.${note}`);
+        `<strong>No pudimos confirmar que tu ${addon ? 'adición' : 'solicitud'} se enviara.</strong> Puede que sí haya llegado.${refEs} Antes de enviarla otra vez, ${call ? call + ' o ' : ''}<a href="${mail}">envíala por email</a> (ya va escrita). Si la envías de nuevo no hay problema: lleva el mismo número de referencia y sabremos que es el mismo pedido.${note}`,
+        `<strong>We could not confirm that your ${addon ? 'addition' : 'request'} was sent.</strong> It may have arrived after all.${refEn} Before sending it again, ${call ? call + ' or ' : ''}<a href="${mail}">send it by email</a> (it is already filled in). Sending it again is fine: it carries the same reference number, so we will know it is the same order.${note}`);
     } else {
       const phone = tel ? L(` o llámanos al ${tel}`, ` or call us at ${tel}`) : '';
       box.innerHTML = L(
-        `<strong>Tu solicitud NO se envió.</strong> Intenta de nuevo en un momento. Si sigue fallando, <a href="${mail}">envíala por email</a> con un toque (ya va escrita)${phone}.${note}`,
-        `<strong>Your request was NOT sent.</strong> Try again in a moment. If it still fails, <a href="${mail}">send it by email</a> with one tap (it is already filled in)${phone}.${note}`);
+        `<strong>Tu ${addon ? 'adición' : 'solicitud'} NO se envió.</strong>${addon ? ' Tu pedido original sí llegó.' : ''} Intenta de nuevo en un momento. Si sigue fallando, <a href="${mail}">envíala por email</a> con un toque (ya va escrita)${phone}.${note}`,
+        `<strong>Your ${addon ? 'addition' : 'request'} was NOT sent.</strong>${addon ? ' Your original order did arrive.' : ''} Try again in a moment. If it still fails, <a href="${mail}">send it by email</a> with one tap (it is already filled in)${phone}.${note}`);
     }
     box.scrollIntoView(scrollOpts());
     box.focus();
@@ -240,6 +240,7 @@
       if (!okFields || !okExtra) return;
       const btn = form.querySelector('[type=submit]');
       btn.disabled = true;
+      form.querySelectorAll('[data-addon-cancel]').forEach((b) => { b.disabled = true; });
       btn.dataset.label = btn.innerHTML;
       btn.textContent = L('Enviando…', 'Sending…');
       let retrying = false;
@@ -251,16 +252,18 @@
         sent = true;
       } catch (err) {
         const e2 = built ? err : { detail: L('no se pudo preparar el pedido', 'the order could not be prepared') };
-        showError(form, built ? built.plain : '', built ? built.payload._subject : 'Tu Food Court', e2, built && built.payload.Referencia);
+        showError(form, built ? built.plain : '', built ? built.payload._subject : 'Tu Food Court', e2, built && built.payload.Referencia, built && built.addon);
       } finally {
         clearTimeout(slow);
         btn.disabled = false;
+        form.querySelectorAll('[data-addon-cancel]').forEach((b) => { b.disabled = false; });
         btn.innerHTML = btn.dataset.label;
       }
       if (sent) { // outside the try: a hiccup while tidying up must never turn a delivered order into an error message
-        try { if (build.after) build.after(); } catch (err) { /* storage unavailable */ }
+        try { if (build.after) build.after(built); } catch (err) { /* storage unavailable */ }
         forgetRefs();
         showDone(form, built.payload.Referencia, built.summaryHtml);
+        document.querySelector('[data-form-done]').classList.toggle('is-addon', !!built.addon);
       }
     });
   }
@@ -287,6 +290,10 @@
 
   function initDelivery(form) {
     const cart = []; // {uid, id, name, qty, opts:{key:value}, note}
+    // The order just sent (until a new one starts) and whether the form is in «añadir a ese pedido» mode. `tried`/`tryKey` remember
+    // the last addition attempt so a DIFFERENT addition after a failed (maybe delivered) one never reuses its -A<n> number.
+    const sent = { ref: '', f: null, adds: 0, tried: false, tryKey: '' };
+    let adding = false;
     const picker = form.querySelector('[data-picker]');
     const list = form.querySelector('[data-cart]');
     const cartErr = form.querySelector('[data-cart-error]');
@@ -353,6 +360,7 @@
 
     // The cart survives a reload, a header link or the phone discarding the tab: this tab only, for a couple of hours.
     function saveCart() {
+      if (adding) return; // an addition is tied to the sent order held in memory: after a reload its cart would come back as an unlinked normal order
       try {
         if (cart.length) sessionStorage.setItem(CART_KEY, JSON.stringify({ t: Date.now(), cart }));
         else sessionStorage.removeItem(CART_KEY);
@@ -648,6 +656,51 @@
     renderCart();
     if (cartNotice && live) live.textContent = cartNotice; // after renderCart(): announce() rewrites the live region
 
+    // ----- adding to an order that was already sent (until the owner confirms it) -----
+    // The confirmation screen offers «Añadir algo a este pedido»: the form comes back showing only the picker, the cart and the
+    // notes; the contact details, place, time and payment of the sent order are reused and the email arrives marked «➕ ADICIÓN».
+    const done = document.querySelector('[data-form-done]');
+    const banner = form.querySelector('[data-addon-banner]');
+    function renderBanner() {
+      if (!adding || !sent.f) return;
+      const f = sent.f;
+      const where = isPickup() ? L('recogido en el mostrador', 'pickup at the counter') : esc(f.entrega);
+      const tel = C.phone ? `<a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">${esc(C.phone)}</a>` : '';
+      banner.querySelector('[data-addon-text]').innerHTML = L(
+        `Estás añadiendo al pedido <strong>${esc(sent.ref)}</strong> (${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))} · ${where}). Se envía aparte, marcado como adición, con tus mismos datos y forma de pago (${esc(tr(f.pago))}). Puedes añadir hasta que te confirmemos tu pedido${tel ? `; si ya te confirmamos, llámanos al ${tel}` : ''}.`,
+        `You are adding to order <strong>${esc(sent.ref)}</strong> (${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))} · ${where}). It is sent separately, marked as an addition, with your same details and payment method (${esc(tr(f.pago))}). You can add until we confirm your order${tel ? `; if we already confirmed it, call us at ${tel}` : ''}.`);
+    }
+    function endAddon() { adding = false; form.classList.remove('is-addon'); banner.hidden = true; }
+    function startAddon() {
+      if (!sent.f) return;
+      adding = true;
+      form.classList.add('is-addon');
+      cart.length = 0; saveCart(); renderCart();
+      form.querySelector('[name=notas]').value = ''; // the notes of the sent order are already with the owner
+      form.querySelector('[data-form-error]').hidden = true;
+      cartErr.hidden = true; cartNotice = ''; // nothing stale from the previous order
+      toast.hidden = true; clearTimeout(toastTimer);
+      banner.hidden = false;
+      renderBanner();
+      done.hidden = true;
+      form.hidden = false;
+      banner.scrollIntoView(scrollOpts('start'));
+      banner.focus({ preventScroll: true }); // keyboard/screen-reader users land on «estás añadiendo al pedido…» instead of the page top
+    }
+    function cancelAddon() {
+      if (form.querySelector('[type=submit]').disabled) return; // a send is in flight
+      endAddon();
+      cart.length = 0; saveCart(); renderCart();
+      cartErr.hidden = true; cartNotice = '';
+      toast.hidden = true; clearTimeout(toastTimer);
+      form.hidden = true;
+      done.hidden = false;
+      done.focus({ preventScroll: true });
+    }
+    done.querySelectorAll('[data-add-more]').forEach((b) => b.addEventListener('click', startAddon));
+    banner.querySelectorAll('[data-addon-cancel]').forEach((b) => b.addEventListener('click', cancelAddon));
+    document.addEventListener('tfc:lang', renderBanner);
+
     wireSubmit(form, {
       check(fieldsOk) {
         if (!cart.length) {
@@ -658,10 +711,19 @@
         return true;
       },
       payload() {
-        const f = fields(form);
+        const live = fields(form);
+        // An addition reuses everything the customer sent with the order (frozen at send time: the date/time windows may have
+        // moved on since) and takes only the new items and notes from the form.
+        const f = adding ? { ...sent.f, notas: live.notas || '' } : live;
         const pickup = isPickup();
         const emp = needsEmployee();
-        const ref = refFor(pickup ? 'R' : 'D');
+        let ref;
+        if (adding) {
+          const key = JSON.stringify([cart.map((l) => [l.id, l.qty, l.opts, l.note]), f.notas]);
+          if (sent.tried && sent.tryKey !== key) sent.adds += 1; // another addition after a failed attempt: burn the number the first one may have used
+          sent.tried = true; sent.tryKey = key;
+          ref = `${sent.ref}-A${sent.adds + 1}`;
+        } else ref = refFor(pickup ? 'R' : 'D');
         const shortDate = parseISO(f.fecha).toLocaleDateString('es-PR', { weekday: 'short', day: 'numeric', month: 'short' });
         const when = `${fmtDate(f.fecha)} · ${f.ventana}`;
         const pickupPlace = L('Tu Food Court, food court de Metro Medical Center', 'Tu Food Court, Metro Medical Center food court');
@@ -669,14 +731,17 @@
         const subtotalEs = `${TFC.money(t.sum)} sin IVU${t.unpriced ? ' (sin los artículos a precio de mostrador)' : ''}`;
         const subtotalEn = `${TFC.money(t.sum)} before IVU${t.unpriced ? ' (items at counter price not included)' : ''}`;
         const payload = {
-          _subject: pickup
+          _subject: adding
+            ? (pickup ? `➕ ADICIÓN a ${sent.ref} (recogido) — ${f.nombre} · ${shortDate} · ${f.ventana}` : `➕ ADICIÓN a ${sent.ref} — ${f.nombre} (${f.departamento}) · ${shortDate} · ${f.ventana}`)
+            : pickup
             ? `🥡 Recogido ${ref} — ${f.nombre} · ${shortDate} · ${f.ventana}`
             : `🛵 Delivery MMC ${ref} — ${f.nombre} (${f.departamento}) · ${shortDate} · ${f.ventana}`,
           _template: 'table',
           _captcha: 'false',
           _honey: f._honey || '',
           Referencia: ref,
-          Tipo: pickup ? 'Recogido en el mostrador' : 'Delivery — empleado Metro Medical Center',
+          ...(adding ? { 'Adición a': `${sent.ref} (pedido ya enviado: esto se SUMA a ese pedido)` } : {}),
+          Tipo: (adding ? 'ADICIÓN a un pedido ya enviado — ' : '') + (pickup ? 'Recogido en el mostrador' : 'Delivery — empleado Metro Medical Center'),
           Nombre: f.nombre,
           'Teléfono': f.telefono,
           email: f.email,
@@ -689,7 +754,7 @@
           Hora: f.ventana,
           Pago: f.pago,
           'Artículos': String(count()),
-          'Subtotal': subtotalEs,
+          [adding ? 'Subtotal de esta adición' : 'Subtotal']: subtotalEs,
         });
         // One row per line so the email table stays readable.
         cart.forEach((l, i) => { payload[`Pedido ${i + 1}`] = lineText(l, true); });
@@ -699,16 +764,20 @@
           Idioma: TFC.lang(),
           Origen: source(),
           _autoresponse: L(
-            `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu pedido ${ref}.\n\nPedido:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Recoger en' : 'Entrega'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\nSubtotal: ${subtotalEs}\nPago ${pickup ? 'al recoger' : 'al recibir'}: ${f.pago}\n\nTe confirmaremos el total y la hora por ${f.confirmar_por || 'teléfono o email'} antes de preparar tu pedido.${emp ? ' Recuerda tener tu identificación de empleado a la mano.' : ''}\n\n— Tu Food Court · Metro Medical Center`,
-            `Thanks, ${cleanName(f.nombre)}! We received your order ${ref}.\n\nOrder:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Pick up at' : 'Deliver to'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\nSubtotal: ${subtotalEn}\nPay ${pickup ? 'at pickup' : 'on delivery'}: ${f.pago}\n\nWe'll confirm the total and time by ${f.confirmar_por || 'phone or email'} before preparing your order.${emp ? ' Please have your employee ID ready.' : ''}\n\n— Tu Food Court · Metro Medical Center`),
+            `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu ${adding ? `adición ${ref} al pedido ${sent.ref}` : `pedido ${ref}`}.\n\n${adding ? 'Lo que añadiste' : 'Pedido'}:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Recoger en' : 'Entrega'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\n${adding ? 'Subtotal de esta adición' : 'Subtotal'}: ${subtotalEs}\nPago ${pickup ? 'al recoger' : 'al recibir'}: ${f.pago}\n\nTe confirmaremos el total y la hora por ${f.confirmar_por || 'teléfono o email'} antes de preparar tu pedido.${emp ? ' Recuerda tener tu identificación de empleado a la mano.' : ''}\n\n— Tu Food Court · Metro Medical Center`,
+            `Thanks, ${cleanName(f.nombre)}! We received your ${adding ? `addition ${ref} to order ${sent.ref}` : `order ${ref}`}.\n\n${adding ? 'What you added' : 'Order'}:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Pick up at' : 'Deliver to'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\n${adding ? 'Subtotal of this addition' : 'Subtotal'}: ${subtotalEn}\nPay ${pickup ? 'at pickup' : 'on delivery'}: ${f.pago}\n\nWe'll confirm the total and time by ${f.confirmar_por || 'phone or email'} before preparing your order.${emp ? ' Please have your employee ID ready.' : ''}\n\n— Tu Food Court · Metro Medical Center`),
         });
-        const summaryHtml = `<ul>${cart.map((l) => { const p = linePrice(l); return `<li>${esc(l.qty)} × ${esc(tr(l.name))}${optsText(l).length ? ` (${optsText(l).map((v) => esc(tr(v))).join(', ')})` : ''}${p == null ? '' : ` — ${TFC.money(p)}`}${l.note ? ` · ${esc(l.note)}` : ''}</li>`; }).join('')}</ul>
-          <p><strong>Subtotal:</strong> ${esc(L(subtotalEs, subtotalEn))}</p>
+        const summaryHtml = `${adding ? `<p><strong>${L('Adición al pedido', 'Addition to order')}:</strong> ${esc(sent.ref)}</p>` : ''}<ul>${cart.map((l) => { const p = linePrice(l); return `<li>${esc(l.qty)} × ${esc(tr(l.name))}${optsText(l).length ? ` (${optsText(l).map((v) => esc(tr(v))).join(', ')})` : ''}${p == null ? '' : ` — ${TFC.money(p)}`}${l.note ? ` · ${esc(l.note)}` : ''}</li>`; }).join('')}</ul>
+          <p><strong>${adding ? L('Subtotal de esta adición', 'Subtotal of this addition') : 'Subtotal'}:</strong> ${esc(L(subtotalEs, subtotalEn))}</p>
           <p><strong>${pickup ? L('Recoger en', 'Pick up at') : L('Entrega', 'Deliver to')}:</strong> ${esc(pickup ? pickupPlace : f.entrega)} · ${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))}</p>
           <p><strong>${L('Te confirmamos por', 'We confirm by')}:</strong> ${esc(tr(f.confirmar_por || ''))}</p>`;
-        return { payload, summaryHtml, plain: plainText(payload) };
+        return { payload, summaryHtml, plain: plainText(payload), f, addon: adding };
       },
-      after() {
+      after(built) {
+        if (built.addon) { sent.adds += 1; sent.tried = false; } // «-A1», «-A2»… for several additions to the same order
+        else { sent.ref = built.payload.Referencia; sent.f = built.f; sent.adds = 0; sent.tried = false; }
+        endAddon();
+        toast.hidden = true; clearTimeout(toastTimer); // the «Elegir opciones» toast must not stay over the confirmation
         try {
           if (remember && remember.checked) {
             const o = { t: Date.now() }; REMEMBER_FIELDS.forEach((k) => { o[k] = form[k].value; });

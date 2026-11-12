@@ -398,6 +398,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 .done [data-summary] { text-align: left; max-width: 520px; margin: 0 auto 20px; background: var(--cream); border-radius: var(--radius-sm); padding: 14px 18px; }
 .done [data-summary]:empty { display: none; }
 .done [data-summary] ul { margin: 0 0 8px; padding-left: 1.1em; }
+.done .addon-note { max-width: 520px; margin: 0 auto 16px; }
+.done .btn { margin: 4px 3px; } /* the buttons wrap on a phone: keep them apart */
+.addon-banner:focus { outline: none; }
+.addon-banner strong, .addon-banner a[href^="tel:"], .done .addon-note a[href^="tel:"] { white-space: nowrap; } /* never split the reference or the phone number */
+.addon-banner .link-btn:disabled { opacity: .5; cursor: default; }
+
+/* ---------- adding to an order that was already sent (delivery form) ---------- */
+.lbl-addon { display: none; }
+.addon-banner { scroll-margin-top: 84px; } /* clear the sticky header when it scrolls into view */
+.is-addon .lbl-order { display: none; }
+.is-addon .lbl-addon { display: inline; }
+.is-addon [data-addon-hide] { display: none; }
+.is-addon legend .n { display: none; }
+.addon-banner .link-btn { display: block; margin-top: 8px; padding: 8px 0; background: none; border: 0; color: var(--red-deep); font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
 
 /* ---------- prose ---------- */
 .prose { max-width: 760px; margin: 0 auto; }

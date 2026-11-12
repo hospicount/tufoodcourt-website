@@ -142,7 +142,15 @@ window.TFC_EN = {
   'd.fine': 'After you send it you\'ll see your reference number, and we confirm the total and time. We use your details only to prepare and deliver your order. <a href="/privacidad/">Privacy</a>. Trouble sending? Call us at <a data-cfg-tel href="#"></a>.',
   'd.doneT': 'Order received!',
   'd.done': 'We\'ll contact you to confirm the total and time. Keep your reference number.',
-  'd.again': 'Place another order',
+  'd.again': 'New separate order',
+  'd.addMore': 'Add something to this order',
+  'd.addonNote': 'Forgot something? You can add it until we confirm your order: tap “Add something to this order” or call us at <a data-cfg-tel href="#"></a> with your reference number.',
+  'd.addCancel': 'Cancel the addition',
+  'd.cartAdd': 'What you are adding',
+  'd.submitAdd': 'Send addition',
+  'd.doneAdd': 'Addition received!',
+  'd.f3Add': 'What you want to add',
+  'd.f4Add': 'Notes',
 
   // catering
   'c.eyebrow': 'Catering',

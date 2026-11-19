@@ -529,6 +529,22 @@
     }
     modeBox.addEventListener('change', applyMode);
 
+    // Owner switch (config.deliveryPaused): the Delivery option stays visible but can't be chosen, and a notice says why;
+    // pickup keeps working. An addition to a delivery order already sent keeps its frozen details (it never reads this radio).
+    const pauseBanner = document.createElement('div');
+    function pauseDelivery() {
+      const [dIn, pIn] = modeBox.querySelectorAll('input');
+      if (!dIn || !pIn) return;
+      dIn.disabled = true; dIn.required = false; pIn.required = true;
+      if (dIn.checked && !adding) { dIn.checked = false; pIn.checked = true; }
+      const tel = C.phone ? ` ${L('Llámanos al', 'Call us at')} <a href="tel:${esc(C.phone.replace(/[^+\d]/g, ''))}">${esc(C.phone)}</a>.` : '';
+      pauseBanner.className = 'notice';
+      pauseBanner.setAttribute('role', 'status');
+      pauseBanner.dataset.deliveryPaused = '';
+      pauseBanner.innerHTML = `<span class="notice-icon" aria-hidden="true">⏸️</span><div><strong>${L('El delivery está en pausa por ahora.', 'Delivery is paused for now.')}</strong> <span>${L('Tenemos mucha demanda en la cocina. Puedes pedir para recoger en el mostrador.', 'The kitchen is very busy. You can still order for pickup at the counter.')}${tel}</span></div>`;
+      if (!pauseBanner.isConnected) form.insertAdjacentElement('beforebegin', pauseBanner);
+    }
+
     // ----- date + time windows (built from the opening hours in config) -----
     const win = form.querySelector('[name=ventana]');
     const date = form.querySelector('[name=fecha]');
@@ -603,6 +619,7 @@
     const renderStatic = () => {
       renderChips(modeBox, 'modalidad', C.fulfillmentOptions, 'radio', true);
       if (!modeBox.querySelector('input:checked')) modeBox.querySelector('input').checked = true;
+      if (C.deliveryPaused) pauseDelivery();
       renderChips(pay, 'pago', C.paymentOptions, 'radio', true);
       if (confirmBy) renderChips(confirmBy, 'confirmar_por', C.confirmChannels, 'radio', true);
       applyMode();

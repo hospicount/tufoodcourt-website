@@ -50,6 +50,7 @@ window.TFC_CONFIG = {
   orderLeadMinutes: 30,           // today's windows ending sooner than this are greyed out
   maxAdvanceDays: 14,             // how far ahead an order can be scheduled
   pickupEmployeesOnly: false,     // true = pickup also requires MMC employee details
+  deliveryPaused: true,           // true = «Delivery» can't be chosen on the order page (pickup keeps working); set false + publish to resume
   // Base prices come from assets/js/menu.js, overridden by the «Precios» tab of the owner's Google Sheet (see below;
   // before IVU). Owner rule (2026-10-28): add 3.8% to every base price, then round UP to the next .99
   // (e.g. $11.99 → $12.45 → $12.99). Set percent to 0 and rounding to 'none' to show the base prices exactly as listed.

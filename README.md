@@ -50,7 +50,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261120a`. Cuando cambies cualquier archivo de `assets/js` (`config.js`, `menu.js`, `i18n.js`, `forms.js`, `site.js`, `prices.js`, `criollo.js`) o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261120c`. Cuando cambies cualquier archivo de `assets/js` (`config.js`, `menu.js`, `i18n.js`, `forms.js`, `site.js`, `prices.js`, `criollo.js`) o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash
@@ -86,6 +86,14 @@ Mientras una **estación** esté en esa lista:
 **Cuando abra un plato:** quita su id de `comingSoon` y sube el `?v=`.
 
 **Cuando abra una estación:** quita su id de `comingSoon`, reescribe las frases «muy pronto» (en español en `index.html` → `hero.lead` y `ct.lead2`, y `catering/index.html` → `c.lead`, la `meta description` y el `og:description`; la `meta description` de `delivery/index.html`; en inglés las mismas claves en `i18n.js`; el historial de git tiene el texto anterior) y sube el `?v=`.
+
+## Promo semanal: viernes −50% (ensaladas y ensalada de frutas)
+`weeklyPromo` en `assets/js/config.js` (dueño, 2026-11-20): `day` (5 = viernes), `percent` (50), `items` (ids de estación y/o de plato de `menu.js`: hoy `'ensaladas'` y `'de-frutas'`; un plato que sale en dos estaciones, como la ensalada de frutas en Desayuno y Postres, se rebaja y se etiqueta igual en ambas si CUALQUIERA de sus estaciones o su propio id está en `items`), `from` (primera fecha en que rige; `''` = ya) y `name`. `weeklyPromo: null` la apaga.
+- **Sigue la FECHA del pedido (recogido/entrega), no el día en que se hace el pedido**: quien programa hoy un pedido para un viernes ≥ `from` ve el precio rebajado en cuanto elige esa fecha; una adición (`-A1`…) conserva la fecha del pedido original.
+- **Regla**: mitad del precio del sitio, redondeada hacia ABAJO al centavo (7.99 → 3.99, 10.99 → 5.49, 11.99 → 5.99, 13.99 → 6.99). Código: `TFC.promoPrice` en `site.js`.
+- En el pedido: la línea sale con la etiqueta «Viernes −50%», el precio normal tachado y el rebajado; el subtotal dice «incluye Viernes de ensaladas»; el correo al dueño marca cada línea «(promo viernes −50%; normal $X)» y añade la fila «Promo aplicada». El cliente no recibe copia por correo (ver «Cómo llegan los pedidos»); en la pantalla de confirmación ve las mismas notas por línea, sin la fila «Promo aplicada». En los menús (home y selector) sale la etiqueta junto al plato **desde `from`** (antes de esa fecha el sitio no anuncia nada).
+- Rige desde el **2026-11-27** (primer viernes tras pedirla; se pospuso para no cambiar precios sin avisar el mismo día). El correo diario del menú (todavía no existe) debe aplicar la MISMA regla: la fórmula de `TFC.promoPrice`, el mismo `weeklyPromo` de `config.js` y la fecha del pedido, no la del envío.
+- Prueba rápida (consola de `/delivery/`): `TFC.promoApplies({id:'en-caesar',station:{id:'ensaladas'}}, '2026-12-04')` → `true`; `TFC.promoPrice(10.99)` → `5.49`.
 
 ## Menú criollo del día (Google Sheet)
 

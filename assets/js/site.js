@@ -37,13 +37,51 @@
   };
   TFC.money = (n) => (n == null ? '' : '$' + n.toFixed(2));
   // Unit price for an item with the chosen options: number, null = not priced yet, undefined = option not chosen yet.
-  TFC.price = (it, opts) => {
+  // `iso` (YYYY-MM-DD, optional) is the pickup/delivery date: when given, the weekly promotion (config.weeklyPromo) is applied for that day.
+  TFC.price = (it, opts, iso) => {
+    let r;
     if (it.priceBy) {
       const v = opts && opts[it.priceBy];
       if (!v || !Object.prototype.hasOwnProperty.call(it.prices || {}, v)) return undefined; // not chosen, or no longer offered (prices sheet)
-      const p = it.prices[v]; return p == null ? null : adjust(p, it);
-    }
-    return it.price == null ? null : adjust(it.price, it);
+      const p = it.prices[v]; r = p == null ? null : adjust(p, it);
+    } else r = it.price == null ? null : adjust(it.price, it);
+    return r != null && iso && TFC.promoApplies(it, iso) ? TFC.promoPrice(r) : r;
+  };
+
+  // ---------- weekly promotion (config.weeklyPromo) ----------
+  const isoDow = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3], 12).getDay() : -1; };
+  const promoOn = () => { const p = C.weeklyPromo; return !!p && p.percent > 0 && p.percent < 100 && Number.isInteger(p.day) && p.day >= 0 && p.day <= 6 && Array.isArray(p.items); };
+  // Is the dish in the promotion? By its own id, or because ANY station that lists it is in `items` (a dish shared by two stations,
+  // like «Ensalada de frutas» in Desayuno and Postres, is therefore discounted and tagged the same everywhere).
+  const inPromo = (it) => {
+    const ids = C.weeklyPromo.items;
+    return ids.includes(it.id) || (window.TFC_MENU || []).some((s) => ids.includes(s.id) && (s.sections || []).some((sec) => (sec.items || []).some((i) => i.id === it.id)));
+  };
+  // Is `it` (a menu item) discounted on the date `iso` (YYYY-MM-DD)?
+  TFC.promoApplies = (it, iso) => promoOn() && !!it && isoDow(iso) === C.weeklyPromo.day && !(C.weeklyPromo.from && iso < C.weeklyPromo.from) && inPromo(it);
+  // Normal price → promotional price, rounded DOWN to the cent (cents arithmetic: no floating-point surprises).
+  TFC.promoPrice = (regular) => Math.floor(Math.round(regular * 100) * (100 - C.weeklyPromo.percent) / 100 + 1e-9) / 100;
+  TFC.promoPercent = () => (promoOn() ? C.weeklyPromo.percent : 0);
+  // Short label, language-aware: «Viernes −50%» / «Fridays 50% off». kitchen = Spanish, lower-case (for the order email).
+  TFC.promoLabel = (kitchen) => {
+    const p = C.weeklyPromo;
+    if (lang === 'en' && !kitchen) return `${DAY_NAMES.en[p.day]}s ${p.percent}% off`;
+    const d = DAY_NAMES.es[p.day];
+    return `${kitchen ? d : d.charAt(0).toUpperCase() + d.slice(1)} −${p.percent}%`;
+  };
+  TFC.promoName = (kitchen) => { // never throws: a missing or plain-string `name` falls back to a generic label (it sits on the order-sending path)
+    const n = C.weeklyPromo.name;
+    return TFC.pick(kitchen && n && typeof n === 'object' ? n.es : n) || (lang === 'en' && !kitchen ? 'Weekly promo' : 'Promo semanal');
+  };
+  // Menu tag next to a discounted dish; shown once the promotion has started (today, Puerto Rico time, is on or after `from`).
+  const todayPR = () => {
+    const p = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: C.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).forEach((x) => { p[x.type] = x.value; });
+    return `${p.year}-${p.month}-${p.day}`;
+  };
+  TFC.promoTag = (it) => {
+    if (!promoOn() || (C.weeklyPromo.from && todayPR() < C.weeklyPromo.from)) return '';
+    return inPromo(it) && !TFC.isSoon(it.id) ? `<span class="promo-tag">${esc(TFC.promoLabel(false))}</span>` : '';
   };
   // Menu label: "$9", or per-option "10\" $9 · 16\" $18"; '' when unpriced. An option without a price (sheet says
   // «mostrador») is left out of the label; the cart line says "precio en mostrador" once that option is chosen.
@@ -287,7 +325,7 @@
         ${sec.groups ? `<div class="menu-groups">${sec.groups.map((g) => `
           <div class="menu-group"><h4>${esc(TFC.pick(g.label))}</h4><ul>${g.list.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>` : `
         <ul class="menu-items">${TFC.visibleItems(sec).map((it) => `
-          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}</span>${soon ? '' : TFC.isSoon(it.id) ? `<span class="mi-soon">${TFC.soonTag()}</span>` : `<span class="mi-price">${TFC.priceHtml(it) || esc(lang === 'en' ? 'counter price' : 'precio en mostrador')}</span>`}</div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
+          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}${soon ? '' : TFC.promoTag(it)}</span>${soon ? '' : TFC.isSoon(it.id) ? `<span class="mi-soon">${TFC.soonTag()}</span>` : `<span class="mi-price">${TFC.priceHtml(it) || esc(lang === 'en' ? 'counter price' : 'precio en mostrador')}</span>`}</div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
       </section>`).join('');
     root.innerHTML = `
       <div class="menu-tabs">${tabs}</div>

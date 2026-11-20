@@ -340,7 +340,7 @@
             <span class="pick-right">${TFC.soonTag()}</span>
           </div>` : `
           <button type="button" class="pick-item" data-add="${it.id}">
-            <span class="sr-only">${L('Añadir', 'Add')}: </span><span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
+            <span class="sr-only">${L('Añadir', 'Add')}: </span><span class="pick-main"><span class="mi-name">${esc(tr(it.name))}${TFC.promoTag(it)}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
             <span class="pick-right"><span class="mi-price">${TFC.priceHtml(it) || esc(L('precio en mostrador', 'counter price'))}</span><span class="pick-plus" aria-hidden="true">+</span></span>
           </button>`).join('')).join('');
       picker.innerHTML = `
@@ -486,7 +486,18 @@
     }
 
     // ----- prices -----
-    function linePrice(l) { const u = TFC.price(allItems[l.id], l.opts); return u == null ? u : Math.round(u * l.qty * 100) / 100; }
+    // The date the order is FOR (the weekly promotion follows it); an addition keeps the date of the order it adds to.
+    const orderISO = () => (adding && sent.f ? sent.f.fecha : ((form.querySelector('[name=fecha]') || {}).value || ''));
+    const promoLine = (l) => TFC.promoApplies(allItems[l.id], orderISO());
+    function regularLine(l) { const u = TFC.price(allItems[l.id], l.opts); return u == null ? u : Math.round(u * l.qty * 100) / 100; }
+    function linePrice(l) { const u = TFC.price(allItems[l.id], l.opts, orderISO()); return u == null ? u : Math.round(u * l.qty * 100) / 100; }
+    // « (promo viernes −50%; normal $7.99)» after a discounted line. forKitchen = Spanish (the email to the owner).
+    function promoNote(l, forKitchen) {
+      const p = linePrice(l);
+      if (p == null || !promoLine(l)) return '';
+      const reg = TFC.money(regularLine(l));
+      return forKitchen ? ` (promo ${TFC.promoLabel(true)}; normal ${reg})` : L(` (promo ${TFC.promoLabel(true)}; normal ${reg})`, ` (${TFC.promoLabel(false)}; regular ${reg})`);
+    }
     function totals() {
       let sum = 0, unpriced = 0, pending = 0;
       cart.forEach((l) => { const p = linePrice(l); if (p === null) unpriced++; else if (p === undefined) pending++; else sum += p; });
@@ -496,21 +507,25 @@
       saveCart();
       list.querySelectorAll('.cart-line').forEach((row) => {
         const l = cart.find((x) => x.uid === row.dataset.uid);
+        if (!l) return; // stale row behind the confirmation screen (the cart was emptied after sending): nothing to price
         const p = linePrice(l);
-        row.querySelector('[data-line-price]').textContent = p === null ? L('precio en mostrador', 'counter price') : p === undefined ? L('elige opción', 'choose option') : TFC.money(p);
+        const priceEl = row.querySelector('[data-line-price]');
+        if (typeof p === 'number' && promoLine(l)) { // discounted: tag + the normal price crossed out + the promotional price
+          priceEl.innerHTML = `<span class="promo-tag">${esc(TFC.promoLabel(false))}</span> <s class="was"><span class="sr-only">${L('precio normal ', 'regular price ')}</span>${TFC.money(regularLine(l))}</s> <span class="sr-only">${L('ahora ', 'now ')}</span>${TFC.money(p)}`;
+        } else priceEl.textContent = p === null ? L('precio en mostrador', 'counter price') : p === undefined ? L('elige opción', 'choose option') : TFC.money(p);
       });
       if (!subtotal) return;
       if (!cart.length) { subtotal.hidden = true; return; }
       const t = totals();
       subtotal.hidden = false;
       subtotal.innerHTML = `<span>${L('Subtotal', 'Subtotal')}</span><strong>${TFC.money(t.sum)}</strong>
-        <small>${L('IVU no incluido', 'IVU (sales tax) not included')}${t.unpriced ? L(' · hay artículos al precio del mostrador', ' · some items at counter price') : ''}${t.pending ? L(' · elige las opciones que faltan', ' · choose the missing options') : ''}</small>`;
+        <small>${L('IVU no incluido', 'IVU (sales tax) not included')}${cart.some((l) => typeof linePrice(l) === 'number' && promoLine(l)) ? ' · ' + L('incluye ', 'includes ') + esc(TFC.promoName(false)) + ' (' + esc(TFC.promoLabel(false)) + ')' : ''}${t.unpriced ? L(' · hay artículos al precio del mostrador', ' · some items at counter price') : ''}${t.pending ? L(' · elige las opciones que faltan', ' · choose the missing options') : ''}</small>`;
     }
     function lineText(l, withNote) {
       const opts = optsText(l).join(', ');
       const p = linePrice(l);
       const price = p === null ? (withNote ? ' — precio en mostrador' : L(' — precio en mostrador', ' — counter price')) : p === undefined ? '' : ` — ${TFC.money(p)}`; // kitchen lines (withNote) stay in Spanish
-      return `${l.qty} × ${l.name}${opts ? ` (${opts})` : ''}${price}${withNote && l.note ? ` · ${l.note}` : ''}`;
+      return `${l.qty} × ${l.name}${opts ? ` (${opts})` : ''}${price}${promoNote(l, withNote)}${withNote && l.note ? ` · ${l.note}` : ''}`;
     }
 
     // ----- fulfillment mode: delivery (MMC employees) vs pickup at the counter -----
@@ -600,13 +615,14 @@
     date.min = todayISO(0);
     date.max = todayISO(C.maxAdvanceDays);
     date.value = firstOpenDay();
-    date.addEventListener('change', renderWindows);
+    date.addEventListener('change', () => { renderWindows(); refreshTotals(); }); // the weekly promotion follows the chosen date
     // A phone can keep this page open for hours: re-check the calendar and the windows before sending and on coming back.
     function refreshDates(moveOn) {
       date.min = todayISO(0);
       date.max = todayISO(C.maxAdvanceDays);
       if (moveOn && date.value && date.value < date.min) { date.value = firstOpenDay(); win.value = ''; }
       renderWindows();
+      refreshTotals();
     }
     // At submit a past date gets the normal error: never send a day the customer didn't choose.
     form.addEventListener('submit', () => refreshDates(false)); // registered before wireSubmit's handler, so it runs first
@@ -773,6 +789,9 @@
           'Artículos': String(count()),
           [adding ? 'Subtotal de esta adición' : 'Subtotal']: subtotalEs,
         });
+        if (cart.some((l) => typeof linePrice(l) === 'number' && promoLine(l))) {
+          payload['Promo aplicada'] = `${TFC.promoName(true)} (${TFC.promoLabel(true)}): ya está descontada en las líneas marcadas «promo»`;
+        }
         // One row per line so the email table stays readable.
         cart.forEach((l, i) => { payload[`Pedido ${i + 1}`] = lineText(l, true); });
         payload.Notas = f.notas || '';
@@ -784,7 +803,7 @@
             `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu ${adding ? `adición ${ref} al pedido ${sent.ref}` : `pedido ${ref}`}.\n\n${adding ? 'Lo que añadiste' : 'Pedido'}:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Recoger en' : 'Entrega'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\n${adding ? 'Subtotal de esta adición' : 'Subtotal'}: ${subtotalEs}\nPago ${pickup ? 'al recoger' : 'al recibir'}: ${f.pago}\n\nTe confirmaremos el total y la hora por ${f.confirmar_por || 'teléfono o email'} antes de preparar tu pedido.${emp ? ' Recuerda tener tu identificación de empleado a la mano.' : ''}\n\n— Tu Food Court · Metro Medical Center`,
             `Thanks, ${cleanName(f.nombre)}! We received your ${adding ? `addition ${ref} to order ${sent.ref}` : `order ${ref}`}.\n\n${adding ? 'What you added' : 'Order'}:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Pick up at' : 'Deliver to'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\n${adding ? 'Subtotal of this addition' : 'Subtotal'}: ${subtotalEn}\nPay ${pickup ? 'at pickup' : 'on delivery'}: ${f.pago}\n\nWe'll confirm the total and time by ${f.confirmar_por || 'phone or email'} before preparing your order.${emp ? ' Please have your employee ID ready.' : ''}\n\n— Tu Food Court · Metro Medical Center`),
         });
-        const summaryHtml = `${adding ? `<p><strong>${L('Adición al pedido', 'Addition to order')}:</strong> ${esc(sent.ref)}</p>` : ''}<ul>${cart.map((l) => { const p = linePrice(l); return `<li>${esc(l.qty)} × ${esc(tr(l.name))}${optsText(l).length ? ` (${optsText(l).map((v) => esc(tr(v))).join(', ')})` : ''}${p == null ? '' : ` — ${TFC.money(p)}`}${l.note ? ` · ${esc(l.note)}` : ''}</li>`; }).join('')}</ul>
+        const summaryHtml = `${adding ? `<p><strong>${L('Adición al pedido', 'Addition to order')}:</strong> ${esc(sent.ref)}</p>` : ''}<ul>${cart.map((l) => { const p = linePrice(l); return `<li>${esc(l.qty)} × ${esc(tr(l.name))}${optsText(l).length ? ` (${optsText(l).map((v) => esc(tr(v))).join(', ')})` : ''}${p == null ? '' : ` — ${TFC.money(p)}`}${esc(promoNote(l, false))}${l.note ? ` · ${esc(l.note)}` : ''}</li>`; }).join('')}</ul>
           <p><strong>${adding ? L('Subtotal de esta adición', 'Subtotal of this addition') : 'Subtotal'}:</strong> ${esc(L(subtotalEs, subtotalEn))}</p>
           <p><strong>${pickup ? L('Recoger en', 'Pick up at') : L('Entrega', 'Deliver to')}:</strong> ${esc(pickup ? pickupPlace : f.entrega)} · ${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))}</p>
           <p><strong>${L('Te confirmamos por', 'We confirm by')}:</strong> ${esc(tr(f.confirmar_por || ''))}</p>`;

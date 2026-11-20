@@ -58,6 +58,18 @@ window.TFC_CONFIG = {
   // Exception: items with `exact: true` in menu.js (the drinks: $1.50 / water $1.00) are shown exactly as written, with no % and no rounding.
   priceAdjustPercent: 3.8,
   priceRounding: 'up99', // 'up99' | 'none'
+  // Weekly promotion (owner, 2026-11-20: «Fridays, fruit salads and salads 50% off»). On `day` (0 = Sunday … 5 = Friday) the listed items cost
+  // `percent`% less than their normal site price; the result is rounded DOWN to the cent (7.99 → 3.99, 10.99 → 5.49). It follows the
+  // pickup/delivery DATE chosen on the order form (not the day the order is placed), and an addition keeps its order's date.
+  // `items` = station ids and/or dish ids from menu.js. `from` = first date it applies (YYYY-MM-DD; '' = already on) — the «Viernes −50%» tags
+  // on the menus appear from that date too. Set weeklyPromo: null to switch it off. (The future daily-menu email must apply the same rule; see README.)
+  weeklyPromo: {
+    day: 5,
+    percent: 50,
+    from: '2026-11-27',
+    items: ['ensaladas', 'de-frutas'],
+    name: { es: 'Viernes de ensaladas', en: 'Salad Friday' },
+  },
   paymentOptions: ['ATH Móvil', 'Tarjeta de crédito', 'Efectivo'], // Spanish values; EN display in i18n.js TFC_EN_VALUES
   confirmChannels: ['Llamada', 'Texto (SMS)', 'WhatsApp', 'Email'],
   fulfillmentOptions: ['Delivery a mi área (empleados MMC)', 'Recogido en el mostrador'],

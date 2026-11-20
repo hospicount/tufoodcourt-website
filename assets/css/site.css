@@ -171,6 +171,10 @@ p { margin: 0 0 1em; }
 /* «Próximamente»: stations listed in config.comingSoon */
 .soon-badge { align-self: flex-start; background: #fff; color: var(--green-deep); font-weight: 900; font-size: .78rem; letter-spacing: .6px; text-transform: uppercase; border-radius: 999px; padding: .3em .9em; margin-bottom: 12px; }
 .soon-tag { display: inline-block; vertical-align: middle; margin-left: .35em; padding: .1em .55em; border-radius: 999px; background: var(--amber-soft); color: var(--green-deep); font-size: .68rem; font-weight: 900; letter-spacing: .5px; text-transform: uppercase; line-height: 1.5; }
+/* Weekly promotion (config.weeklyPromo): tag next to a discounted dish and the crossed-out normal price in the cart */
+.promo-tag { display: inline-block; vertical-align: middle; margin-left: .35em; padding: .1em .55em; border-radius: 999px; background: var(--red-deep); color: #fff; font-size: .68rem; font-weight: 900; letter-spacing: .5px; text-transform: uppercase; line-height: 1.5; white-space: nowrap; }
+.cart-price .promo-tag { margin-left: 0; }
+.was { color: var(--muted); font-weight: 700; text-decoration: line-through; }
 .mi-soon { margin-left: auto; }
 .mi-soon .soon-tag { margin-left: 0; }
 .pick-soon { cursor: default; border-style: dashed; }
@@ -370,14 +374,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 .qty input::-webkit-inner-spin-button, .qty input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .cart-remove { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 1rem; width: 40px; height: 40px; border-radius: 50%; }
 .cart-remove:hover { background: #fdeae4; color: var(--red-deep); }
-@media (max-width: 760px) {
-  /* phone cart line: name | price on the first row, stepper | ✕ on the second, so ✕ never strands on its own row */
-  .cart-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: center; }
-  .cart-head .mi-name { grid-column: 1; }
-  .cart-head .cart-price { grid-column: 2; justify-self: end; text-align: right; white-space: normal; }
-  .cart-head .qty { grid-column: 1; justify-self: start; }
-  .cart-head .cart-remove { grid-column: 2; justify-self: end; }
-}
+/* cart line at EVERY width (the cart column is only ~330 px wide even on desktop): name | price on the first row, stepper | ✕ on the second,
+   so ✕ never strands on its own row and the dish name keeps its width when the price cell carries the promo tag + crossed-out price */
+.cart-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: center; }
+.cart-head .mi-name { grid-column: 1; }
+.cart-head .cart-price { grid-column: 2; justify-self: end; text-align: right; white-space: normal; }
+.cart-head .cart-price .promo-tag { display: block; width: max-content; margin: 0 0 2px auto; } /* promo tag on its own line */
+.cart-head .qty { grid-column: 1; justify-self: start; }
+.cart-head .cart-remove { grid-column: 2; justify-self: end; }
 .cart-opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .cart-opts label { font-size: .8rem; font-weight: 800; color: var(--muted); display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 120px; }
 /* keep every focusable text control at >= 16px (1rem): iOS Safari and in-app browsers zoom the page on focus below that and never zoom back out */

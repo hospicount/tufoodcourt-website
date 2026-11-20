@@ -66,7 +66,7 @@ window.TFC_CONFIG = {
   weeklyPromo: {
     day: 5,
     percent: 50,
-    from: '2026-11-27',
+    from: '2026-11-20', // owner (2026-11-20): start the same day — Friday 2026-11-20 is the first promo day
     items: ['ensaladas', 'de-frutas'],
     name: { es: 'Viernes de ensaladas', en: 'Salad Friday' },
   },

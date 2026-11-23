@@ -74,15 +74,39 @@
     return TFC.pick(kitchen && n && typeof n === 'object' ? n.es : n) || (lang === 'en' && !kitchen ? 'Weekly promo' : 'Promo semanal');
   };
   // Menu tag next to a discounted dish; shown once the promotion has started (today, Puerto Rico time, is on or after `from`).
-  const todayPR = () => {
+  const nowPR = () => { // Puerto Rico's date (YYYY-MM-DD) and minutes since midnight, whatever the phone's clock says
     const p = {};
-    new Intl.DateTimeFormat('en-US', { timeZone: C.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).forEach((x) => { p[x.type] = x.value; });
-    return `${p.year}-${p.month}-${p.day}`;
+    new Intl.DateTimeFormat('en-US', { timeZone: C.timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date()).forEach((x) => { p[x.type] = x.value; });
+    return { iso: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute };
+  };
+  const todayPR = () => nowPR().iso;
+  const addDays = (iso, n) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    const d = new Date(+m[1], +m[2] - 1, +m[3] + n, 12);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
   TFC.promoTag = (it) => {
     if (!promoOn() || (C.weeklyPromo.from && todayPR() < C.weeklyPromo.from)) return '';
     return inPromo(it) && !TFC.isSoon(it.id) ? `<span class="promo-tag">${esc(TFC.promoLabel(false))}</span>` : '';
   };
+  // The next promo day we can still take orders for: today while same-day orders are open (before last call), otherwise the next one.
+  // null = no promotion, not started yet, or the promo day is not an opening day.
+  TFC.promoNext = () => {
+    const p = C.weeklyPromo;
+    const h = promoOn() && TFC.time.dayHours(p.day);
+    if (!h) return null;
+    const now = nowPR();
+    if (p.from && now.iso < p.from) return null;
+    for (let i = 0; i <= 7; i++) {
+      const iso = addDays(now.iso, i);
+      if (isoDow(iso) !== p.day) continue;
+      if (i === 0 && now.min >= h[1] - C.lastCallMinutesBeforeClose) continue; // last call has passed: the next one
+      return { iso, days: i, today: i === 0, until: h[1] - C.lastCallMinutesBeforeClose };
+    }
+    return null;
+  };
+  // The date the home menu shows promo prices for: today, only while the promotion is live (else '').
+  const liveIso = () => { const n = TFC.promoNext(); return n && n.today ? n.iso : ''; };
   // Menu label: "$9", or per-option "10\" $9 · 16\" $18"; '' when unpriced. An option without a price (sheet says
   // «mostrador») is left out of the label; the cart line says "precio en mostrador" once that option is chosen.
   const priced = (it) => Object.entries(it.prices || {}).filter(([, v]) => v != null);
@@ -93,9 +117,17 @@
     return it.price == null ? '' : TFC.money(adjust(it.price, it));
   };
   // Same label as HTML: each variant is an unbreakable span so long labels wrap between variants on phones.
-  TFC.priceHtml = (it) => {
-    if (it.priceBy) return priced(it).map(([k, v]) => `<span class="var">${named(it) ? esc(TFC.tr(k)) + ' ' : ''}${TFC.money(adjust(v, it))}</span>`).join(' <span class="sep">·</span> ');
-    return it.price == null ? '' : TFC.money(adjust(it.price, it));
+  // `iso` (optional): when the weekly promotion applies to the dish on that date, each price shows «was → now».
+  TFC.priceHtml = (it, iso) => {
+    const on = !!iso && TFC.promoApplies(it, iso);
+    const en = lang === 'en';
+    const m = (v) => {
+      const r = adjust(v, it);
+      return on ? `<s class="was"><span class="sr-only">${en ? 'regular price ' : 'precio normal '}</span>${TFC.money(r)}</s> <span class="now"><span class="sr-only">${en ? 'now ' : 'ahora '}</span>${TFC.money(TFC.promoPrice(r))}</span>` : TFC.money(r);
+    };
+    if (it.priceBy) return priced(it).map(([k, v]) => `<span class="var">${named(it) ? esc(TFC.tr(k)) + ' ' : ''}${m(v)}</span>`).join(' <span class="sep">·</span> ');
+    if (it.price == null) return '';
+    return on ? `<span class="var">${m(it.price)}</span>` : m(it.price);
   };
 
   // Spanish lives in the HTML; English in TFC_EN keyed by data-i18n. Originals are cached so toggling back works.
@@ -153,7 +185,7 @@
           ${navLink('/delivery/', 'nav.delivery', 'Delivery / Recogido', page === 'delivery')}
           ${navLink('/catering/', 'nav.catering', 'Catering', page === 'catering')}
           ${navLink('/#visitanos', 'nav.visit', 'Visítanos', false)}
-          <a class="btn btn-amber btn-sm nav-cta" href="/pedidos/" data-i18n="nav.order">Pedir / Cotizar</a>
+          <a class="btn btn-amber btn-sm nav-cta" href="/pedidos/" data-i18n="nav.order">Pedir / Catering</a>
         </nav>
         <div class="header-actions">
           <button class="lang-toggle" type="button">EN</button>
@@ -318,6 +350,7 @@
       </button>`).join('');
     const s = stations.find((x) => x.id === active);
     const soon = TFC.isSoon(s.id); // a preview: dishes without prices (they are announced when the station opens)
+    const live = soon ? '' : liveIso(); // today's date while the weekly promotion is live: promo dishes show «was → now» prices
     const sections = s.sections.filter((sec) => sec.groups || TFC.visibleItems(sec).length).map((sec) => `
       <section class="menu-section">
         <h3>${esc(TFC.pick(sec.title))}</h3>
@@ -325,7 +358,7 @@
         ${sec.groups ? `<div class="menu-groups">${sec.groups.map((g) => `
           <div class="menu-group"><h4>${esc(TFC.pick(g.label))}</h4><ul>${g.list.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>` : `
         <ul class="menu-items">${TFC.visibleItems(sec).map((it) => `
-          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}${soon ? '' : TFC.promoTag(it)}</span>${soon ? '' : TFC.isSoon(it.id) ? `<span class="mi-soon">${TFC.soonTag()}</span>` : `<span class="mi-price">${TFC.priceHtml(it) || esc(lang === 'en' ? 'counter price' : 'precio en mostrador')}</span>`}</div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
+          <li><div class="mi-row"><span class="mi-name">${esc(TFC.tr(it.name))}${soon ? '' : TFC.promoTag(it)}</span>${soon ? '' : TFC.isSoon(it.id) ? `<span class="mi-soon">${TFC.soonTag()}</span>` : `<span class="mi-price">${TFC.priceHtml(it, live) || esc(lang === 'en' ? 'counter price' : 'precio en mostrador')}</span>`}</div>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</li>`).join('')}</ul>`}
       </section>`).join('');
     root.innerHTML = `
       <div class="menu-tabs">${tabs}</div>
@@ -349,6 +382,105 @@
     renderMenu();
     if (station) { const b = root.querySelector(`[data-station="${station}"]`); if (b) b.focus({ preventScroll: true }); }
   });
+
+  // ---------- home banner: the weekly promotion, first thing under the header (config.weeklyPromo) ----------
+  // The discounted dishes with their cheapest price, from the same menu data (and sheet prices) the menu itself uses.
+  function promoDishes() {
+    const out = [], seen = new Set();
+    (window.TFC_MENU || []).forEach((s) => (s.sections || []).forEach((sec) => TFC.visibleItems(sec).forEach((it) => {
+      if (seen.has(it.id) || TFC.isSoon(s.id) || TFC.isSoon(it.id) || !inPromo(it)) return;
+      const regs = it.priceBy ? priced(it).map(([, v]) => adjust(v, it)) : (it.price == null ? [] : [adjust(it.price, it)]);
+      if (!regs.length) return;
+      seen.add(it.id);
+      const min = Math.min(...regs);
+      out.push({ name: TFC.tr(it.name), multi: Math.max(...regs) > min, was: min, now: TFC.promoPrice(min) });
+    })));
+    return out;
+  }
+  function chipsHtml(dishes, en) {
+    return `<ul class="promo-dishes">${dishes.map((x) => `<li><span class="pd-name">${esc(x.name)}</span> <span class="pd-price">${x.multi ? (en ? 'from ' : 'desde ') : ''}<s class="was"><span class="sr-only">${en ? 'regular price ' : 'precio normal '}</span>${TFC.money(x.was)}</s> <span class="now"><span class="sr-only">${en ? 'promo price ' : 'precio de promo '}</span>${TFC.money(x.now)}</span></span></li>`).join('')}</ul>`;
+  }
+  // Shown from `announceDaysBefore` days ahead (1 = the day before, e.g. Thursday for Friday) until the promo day's last call.
+  const announceDays = () => { const n = C.weeklyPromo && C.weeklyPromo.announceDaysBefore; return Number.isInteger(n) && n >= 0 ? n : 1; };
+  // Draws the banner; returns whether it is showing.
+  function promoBanner() {
+    const el = document.querySelector('[data-promo-banner]');
+    if (!el) return false;
+    const nx = TFC.promoNext();
+    el.classList.remove('is-pending'); // the height the inline pre-paint script in index.html reserved is no longer needed
+    if (!nx || nx.days > announceDays()) { delete el.dataset.key; delete el.dataset.dishes; el.hidden = true; el.innerHTML = ''; return false; }
+    const p = C.weeklyPromo, en = lang === 'en';
+    // Chips are drawn at once from the data in hand (menu.js + any cached sheet prices); when the sheet answers and changes a price or
+    // hides a dish, only the list is swapped (no new frame: the button doesn't jump and the 50% burst doesn't replay).
+    const dishes = promoDishes();
+    const dishKey = dishes.map((d) => d.name + d.was).join();
+    const key = [lang, nx.iso, nx.days, p.percent, C.deliveryPaused].join('|');
+    if (el.dataset.key === key && !el.hidden) {
+      if (el.dataset.dishes !== dishKey) {
+        el.dataset.dishes = dishKey;
+        const old = el.querySelector('.promo-dishes');
+        if (old) old.remove();
+        if (dishes.length) el.querySelector('.promo-sub').insertAdjacentHTML('afterend', chipsHtml(dishes, en));
+      }
+      return true;
+    }
+    el.dataset.key = key;
+    el.dataset.dishes = dishKey;
+    const soon = nx.days === 1; // the day before (Thursday): «¡Mañana es viernes!»
+    const day = DAY_NAMES[lang][p.day];
+    const dayPl = en ? day + 's' : (day.endsWith('s') ? day : day + 's');
+    const what = TFC.pick(p.what) || (en ? 'select dishes' : 'platos selectos');
+    const [y, m, d] = nx.iso.split('-').map(Number);
+    const dateTxt = new Date(y, m - 1, d, 12).toLocaleDateString(en ? 'en-US' : 'es-PR', { day: 'numeric', month: 'long' });
+    const until = TFC.time.fmt12(nx.until);
+    const art = Math.floor(nx.until / 60) % 12 === 1 ? 'la' : 'las';
+    const how = C.deliveryPaused ? (en ? 'Pickup at the counter' : 'Recogido en el mostrador') : (en ? 'Pickup or delivery' : 'Recogido o delivery');
+    const kicker = nx.today ? (en ? `Today is ${day}!` : `¡Hoy es ${day}!`)
+      : soon ? (en ? `Tomorrow is ${day}!` : `¡Mañana es ${day}!`)
+      : (en ? `Every ${day}` : `Todos los ${dayPl}`);
+    const sub = nx.today
+      ? (en ? `${p.percent}% off ${what}. Today only!` : `${p.percent}% de descuento en ${what}. ¡Solo hoy!`)
+      : soon ? (en ? `Tomorrow: ${p.percent}% off ${what}. Place your order today!` : `Mañana: ${p.percent}% de descuento en ${what}. ¡Haz tu pedido desde hoy!`)
+      : (en ? `${p.percent}% off ${what} every ${day}. Next one: ${day}, ${dateTxt}.` : `${p.percent}% de descuento en ${what} todos los ${dayPl}. El próximo: ${day} ${dateTxt}.`);
+    const cta = nx.today ? (en ? 'Order now' : 'Pedir ahora') : soon ? (en ? 'Order for tomorrow' : 'Pedir para mañana') : (en ? `Order for ${day}` : `Pedir para el ${day}`);
+    const fine = nx.today
+      ? (en ? `Same-day orders until ${until}\u00a0· Prices before IVU` : `Pedidos para hoy hasta ${art} ${until}\u00a0· Precios sin IVU`)
+      : `${how}\u00a0· ${en ? 'Prices before IVU' : 'Precios sin IVU'}`;
+    el.hidden = false;
+    el.innerHTML = `
+      <div class="wrap promo-inner">
+        <div class="promo-burst" aria-hidden="true"><span class="pb-num">${p.percent}<small>%</small></span><span class="pb-off">OFF</span></div>
+        <div class="promo-copy">
+          <span class="promo-kicker">${esc(kicker)}</span>
+          <p class="promo-title" id="promo-title">${esc(TFC.promoName(false))}</p>
+          <p class="promo-sub">${esc(sub)}</p>
+          ${dishes.length ? chipsHtml(dishes, en) : ''}
+        </div>
+        <div class="promo-act">
+          <a class="btn btn-amber btn-lg" href="${esc(nx.today ? '/delivery/' : '/delivery/?fecha=' + nx.iso)}">${esc(cta)} →</a>
+          <span class="promo-fine">${esc(fine)}</span>
+        </div>
+      </div>`;
+    return true;
+  }
+  // The catering ad runs every day (config.cateringAd): the big banner at the top, or a slim strip under the promo banner while that one shows.
+  function topBanners() {
+    const promo = promoBanner();
+    const ad = document.querySelector('[data-catering-ad]');
+    if (!ad) return;
+    ad.hidden = C.cateringAd === false;
+    ad.classList.toggle('is-slim', promo);
+  }
+  document.addEventListener('tfc:lang', topBanners);
+  document.addEventListener('tfc:prices', topBanners);
+  // A page left open past last call (or over midnight) flips the banners and the menu prices when the phone comes back.
+  let liveKey = liveIso();
+  const resync = () => { topBanners(); const k = liveIso(); if (k !== liveKey) { liveKey = k; renderMenu(); } };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) resync(); });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) resync(); });
+  // A tab left in front (a desk computer) still flips at Friday's last call and at midnight: re-check once a minute. Cheap: the banner
+  // only redraws when its state changed, the menu only when the live promo date did.
+  if (document.querySelector('[data-promo-banner], [data-menu]')) setInterval(() => { if (!document.hidden) resync(); }, 60000);
 
   // ---------- boot ----------
   header();

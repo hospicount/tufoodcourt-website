@@ -615,6 +615,9 @@
     date.min = todayISO(0);
     date.max = todayISO(C.maxAdvanceDays);
     date.value = firstOpenDay();
+    // /delivery/?fecha=YYYY-MM-DD (the home promo banner): start on that day when it can take orders; anything else is ignored.
+    const want = new URLSearchParams(location.search).get('fecha') || '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(want) && want >= date.min && want <= date.max && availability(want).open > 0) date.value = want;
     date.addEventListener('change', () => { renderWindows(); refreshTotals(); }); // the weekly promotion follows the chosen date
     // A phone can keep this page open for hours: re-check the calendar and the windows before sending and on coming back.
     function refreshDates(moveOn) {
@@ -872,6 +875,24 @@
     document.addEventListener('tfc:lang', syncAddr);
     syncAddr();
 
+    // «¡No cotizamos! Danos tu presupuesto»: the customer's total budget, with a live per-person estimate under it.
+    const budget = form.querySelector('[name=presupuesto]');
+    const guests = form.querySelector('[name=invitados]');
+    const perOut = form.querySelector('[data-per-person]');
+    // Whole cents ÷ guests, then floor: exact (230 ÷ 25 = $9.20, not $9.19 as (b / g) * 100 gives in floating point).
+    const perPerson = (b, g) => { b = Number(b); g = Number(g); return b > 0 && Number.isFinite(b) && Number.isInteger(g) && g >= 1 ? Math.floor(Math.round(b * 100) / g + 1e-9) / 100 : null; };
+    const amount = (n) => '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const showPer = () => {
+      if (!perOut) return;
+      const pp = budget.validity.valid && guests.validity.valid ? perPerson(budget.value, guests.value) : null; // no estimate next to an invalid number
+      perOut.textContent = pp == null ? '' : L(`≈ ${TFC.money(pp)} por persona`, `≈ ${TFC.money(pp)} per person`);
+    };
+    if (budget && guests) {
+      ['input', 'change'].forEach((ev) => { budget.addEventListener(ev, showPer); guests.addEventListener(ev, showPer); });
+      document.addEventListener('tfc:lang', showPer);
+      showPer();
+    }
+
     const stationsBox = form.querySelector('[data-stations-error]');
     form.querySelectorAll('[name=estaciones]').forEach((c) => c.addEventListener('change', () => { if (form.querySelectorAll('[name=estaciones]:checked').length) stationsBox.hidden = true; }));
     wireSubmit(form, {
@@ -884,13 +905,15 @@
       payload() {
         const f = fields(form);
         const ref = refFor('C');
+        const total = f.presupuesto ? amount(f.presupuesto) : '';
+        const pp = perPerson(f.presupuesto, f.invitados);
         const payload = {
-          _subject: `🍽️ Catering ${ref} — ${f.nombre} · ${f.invitados} pers. · ${f.fecha_evento}`,
+          _subject: `🍽️ Catering ${ref} — ${f.nombre} · ${f.invitados} pers.${total ? ' · ' + total : ''} · ${f.fecha_evento}`,
           _template: 'table',
           _captcha: 'false',
           _honey: f._honey || '',
           Referencia: ref,
-          Tipo: 'Cotización de catering',
+          Tipo: 'Catering a presupuesto del cliente',
           Nombre: f.nombre,
           'Teléfono': f.telefono,
           email: f.email,
@@ -903,17 +926,19 @@
           Lugar: `${f.lugar_tipo} — ${f.direccion}`,
           Servicio: f.servicio,
           Estaciones: f.estaciones,
-          'Presupuesto por persona': f.presupuesto || 'No indicado',
+          'Presupuesto total': total || 'No indicado',
+          'Por persona (aprox.)': pp == null ? '' : TFC.money(pp),
           'Alergias / restricciones': f.dietas || '',
           Notas: f.notas || '',
           Idioma: TFC.lang(),
           Origen: source(),
           _autoresponse: L(
-            `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu solicitud de catering ${ref}: ${f.tipo_evento}, ${fmtDate(f.fecha_evento)} a las ${fmtTime(f.hora)}, ${f.invitados} personas (${f.estaciones}; ${f.servicio}).\n\nTe enviaremos la cotización dentro de 1 día laborable por ${f.contacto_pref}.\n\n— Tu Food Court · Metro Medical Center`,
-            `Thanks, ${cleanName(f.nombre)}! We received your catering request ${ref}: ${f.tipo_evento}, ${fmtDate(f.fecha_evento)} at ${fmtTime(f.hora)}, ${f.invitados} guests (${f.estaciones}; ${f.servicio}).\n\nWe'll send your quote within 1 business day via ${f.contacto_pref}.\n\n— Tu Food Court · Metro Medical Center`),
+            `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu solicitud de catering ${ref}: ${f.tipo_evento}, ${fmtDate(f.fecha_evento)} a las ${fmtTime(f.hora)}, ${f.invitados} personas, presupuesto ${total} (${f.estaciones}; ${f.servicio}).\n\nTe contactamos dentro de 1 día laborable por ${f.contacto_pref} con el menú para tu presupuesto.\n\n— Tu Food Court · Metro Medical Center`,
+            `Thanks, ${cleanName(f.nombre)}! We received your catering request ${ref}: ${f.tipo_evento}, ${fmtDate(f.fecha_evento)} at ${fmtTime(f.hora)}, ${f.invitados} guests, budget ${total} (${f.estaciones}; ${f.servicio}).\n\nWe'll contact you within 1 business day via ${f.contacto_pref} with the menu for your budget.\n\n— Tu Food Court · Metro Medical Center`),
         };
         const summaryHtml = `<p><strong>${esc(tr(f.tipo_evento))}</strong> · ${esc(fmtDate(f.fecha_evento))} · ${esc(fmtTime(f.hora))} · ${esc(f.invitados)} ${L('personas', 'guests')}</p>
           <p>${f.estaciones.split(', ').map((s) => esc(tr(s))).join(', ')} · ${esc(tr(f.servicio))}</p>
+          ${total ? `<p><strong>${L('Tu presupuesto', 'Your budget')}:</strong> ${esc(total)}${pp == null ? '' : ` (≈ ${esc(TFC.money(pp))} ${L('por persona', 'per person')})`}</p>` : ''}
           <p><strong>${L('Te contactamos por', 'We contact you by')}:</strong> ${esc(tr(f.contacto_pref))}</p>`;
         return { payload, summaryHtml, plain: plainText(payload) };
       },

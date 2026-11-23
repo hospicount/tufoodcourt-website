@@ -5,10 +5,10 @@ Sitio estático (HTML/CSS/JS sin build) para **tufoodcourtpr.com**. Español por
 ## Páginas
 | Ruta | Qué es |
 |---|---|
-| `/` | Home: hero, tres estaciones, menú por pestañas, delivery MMC, catering, visítanos |
+| `/` | Home: franja de arriba (promo del viernes jue–vie / anuncio de catering), hero, tres estaciones, menú por pestañas, delivery MMC, catering, visítanos |
 | `/pedidos/` | **Destino del código QR.** Elige Delivery o Catering |
 | `/delivery/` | Formulario de pedido: delivery (exclusivo empleados de Metro Medical Center) o recogido en el mostrador; para hoy o programado hasta 14 días |
-| `/catering/` | Formulario de cotización de catering |
+| `/catering/` | Formulario de catering «¡No cotizamos! Danos tu presupuesto» (presupuesto total obligatorio) |
 | `/qr/` | Afiche carta + tarjetas de mostrador 4-up listos para imprimir (noindex) |
 | `/privacidad/` | Política de privacidad |
 
@@ -42,7 +42,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 **Añadir algo a un pedido ya enviado (delivery y recogido).** La pantalla de confirmación ofrece «Añadir algo a este pedido»: el formulario vuelve mostrando solo el menú, el pedido y las notas, y reutiliza los datos, lugar, hora y forma de pago del pedido enviado. Te llega un **email aparte** con asunto «➕ ADICIÓN a TFC-D-… — Nombre …», `Referencia` = la original + `-A1` (`-A2`… si añade más veces), la fila `Adición a` con la referencia original, `Subtotal de esta adición` y solo los artículos nuevos: **tú los sumas al pedido original**. Si la adición llega **después** de que ya confirmaste, llama al cliente: la aceptas si la cocina no ha empezado, o le pides un pedido nuevo.
 - El botón solo existe en esa pantalla (si recarga la página a mitad de una adición, vuelve a un formulario en blanco y sus artículos no se envían). Si el cliente cierra la página, ya no lo tiene: la pantalla le pide llamar al `config.phone` con su número de referencia.
 - «Pedido nuevo (aparte)» crea un pedido independiente con su propia referencia (nada lo liga al anterior).
-- Catering no tiene adiciones: es una cotización y el cliente te responde o te llama.
+- Catering no tiene adiciones: es una solicitud con el presupuesto del cliente; tú le respondes o lo llamas.
 
 ## Publicar (GitHub Pages, $0)
 1. Repo: `https://github.com/hospicount/tufoodcourt-website` (rama `main`). Para publicar cambios: `git add -A && git commit -m "..." && git push`.
@@ -50,7 +50,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261120d`. Cuando cambies cualquier archivo de `assets/js` (`config.js`, `menu.js`, `i18n.js`, `forms.js`, `site.js`, `prices.js`, `criollo.js`) o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261123a`. Cuando cambies cualquier archivo de `assets/js` (`config.js`, `menu.js`, `i18n.js`, `forms.js`, `site.js`, `prices.js`, `criollo.js`) o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash
@@ -73,7 +73,7 @@ for n,p in [('pedidos','/pedidos/?src=qr'),('delivery','/delivery/?src=qr'),('ca
 ## Estaciones y platos próximamente
 `comingSoon` en `config.js` lleva ids de `menu.js`: estaciones (`'pizza'`) o platos (`'po-flan'`, `'po-tres-leches'`, `'na-nachos-pollo'`), más el id especial `'catering-tacos'`, que solo desactiva la opción «Barra de tacos» del formulario de catering (`data-soon-station` / `data-soon` en `catering/index.html`).
 
-**Mexicano abre el 2026-11-05 con menú limitado.** La estación salió de `comingSoon`; lo que no se vende está en «No» en la pestaña «Precios» (tacos, burrito, quesadilla, nachos Regular/Cerdo, loaded potato, Mex Burger, guacamole, pico de gallo). Se venden Nachos · Carne ($12.99), **Nachos · Carnitas** ($12.99; opción `Carnitas` de `na-nachos`, sin fila en «Precios»: vale `menu.js`) y **Cielito Lindo con chips** (`ap-cielito`, $6.99 = base 6 en `menu.js`; la fila de «Precios» tiene `Precio base` vacío, así que vale `menu.js`; si el dueño escribe un número en esa celda, manda el de la hoja). **Nachos de pollo** (`na-nachos-pollo`) sale «Próximamente» (está en `comingSoon`): para venderlos, quitar ese id de `comingSoon` y borrar el plato (o devolver `Pollo` a las opciones de `na-nachos`). Para ampliar la carta mexicana: borrar los «No» en la hoja (sin código). Cuando se venda la carta completa, actualizar también el `tagline` de la estación y el texto `st.mex` (home) y, si se ofrece barra de tacos en catering, quitar `'catering-tacos'` de `comingSoon` y reescribir «muy pronto» en `catering/index.html` (`c.lead`, `meta description`, `og:description`), `index.html` (`ct.lead2`) e `i18n.js`.
+**Mexicano abre el 2026-11-05 con menú limitado.** La estación salió de `comingSoon`; lo que no se vende está en «No» en la pestaña «Precios» (tacos, burrito, quesadilla, nachos Regular/Cerdo, loaded potato, Mex Burger, guacamole, pico de gallo). Se venden Nachos · Carne ($12.99), **Nachos · Carnitas** ($12.99; opción `Carnitas` de `na-nachos`, sin fila en «Precios»: vale `menu.js`) y **Cielito Lindo con chips** (`ap-cielito`, $6.99 = base 6 en `menu.js`; la fila de «Precios» tiene `Precio base` vacío, así que vale `menu.js`; si el dueño escribe un número en esa celda, manda el de la hoja). **Nachos de pollo** (`na-nachos-pollo`) sale «Próximamente» (está en `comingSoon`): para venderlos, quitar ese id de `comingSoon` y borrar el plato (o devolver `Pollo` a las opciones de `na-nachos`). Para ampliar la carta mexicana: borrar los «No» en la hoja (sin código). Cuando se venda la carta completa, actualizar también el `tagline` de la estación y el texto `st.mex` (home) y, si se ofrece barra de tacos en catering, quitar `'catering-tacos'` de `comingSoon` y reescribir «muy pronto» en `catering/index.html` (`c.lead`), `index.html` (`ct.lead2`) e `i18n.js`.
 
 Un **plato** en la lista sale con «Próximamente» en lugar del precio (menú de la home y formulario de pedidos) y no se puede pedir. La ensalada de frutas (`TFC_FRUTAS` en `menu.js`) aparece en Desayuno y en Postres; es el mismo plato, así que su fila de la hoja «Precios» vale para los dos.
 
@@ -85,7 +85,7 @@ Mientras una **estación** esté en esa lista:
 
 **Cuando abra un plato:** quita su id de `comingSoon` y sube el `?v=`.
 
-**Cuando abra una estación:** quita su id de `comingSoon`, reescribe las frases «muy pronto» (en español en `index.html` → `hero.lead` y `ct.lead2`, y `catering/index.html` → `c.lead`, la `meta description` y el `og:description`; la `meta description` de `delivery/index.html`; en inglés las mismas claves en `i18n.js`; el historial de git tiene el texto anterior) y sube el `?v=`.
+**Cuando abra una estación:** quita su id de `comingSoon`, reescribe las frases «muy pronto» (en español en `index.html` → `hero.lead` y `ct.lead2`, y `catering/index.html` → `c.lead`; la `meta description` de `delivery/index.html`; en inglés las mismas claves en `i18n.js`; el historial de git tiene el texto anterior) y sube el `?v=`.
 
 ## Promo semanal: viernes −50% (ensaladas y ensalada de frutas)
 `weeklyPromo` en `assets/js/config.js` (dueño, 2026-11-20): `day` (5 = viernes), `percent` (50), `items` (ids de estación y/o de plato de `menu.js`: hoy `'ensaladas'` y `'de-frutas'`; un plato que sale en dos estaciones, como la ensalada de frutas en Desayuno y Postres, se rebaja y se etiqueta igual en ambas si CUALQUIERA de sus estaciones o su propio id está en `items`), `from` (primera fecha en que rige; `''` = ya) y `name`. `weeklyPromo: null` la apaga.
@@ -94,6 +94,14 @@ Mientras una **estación** esté en esa lista:
 - En el pedido: la línea sale con la etiqueta «Viernes −50%», el precio normal tachado y el rebajado; el subtotal dice «incluye Viernes de ensaladas»; el correo al dueño marca cada línea «(promo viernes −50%; normal $X)» y añade la fila «Promo aplicada». El cliente no recibe copia por correo (ver «Cómo llegan los pedidos»); en la pantalla de confirmación ve las mismas notas por línea, sin la fila «Promo aplicada». En los menús (home y selector) sale la etiqueta junto al plato **desde `from`** (antes de esa fecha el sitio no anuncia nada).
 - Rige desde el **2026-11-20** (el dueño pidió empezar el mismo viernes en que la pidió). El correo diario del menú (todavía no existe) debe aplicar la MISMA regla: la fórmula de `TFC.promoPrice`, el mismo `weeklyPromo` de `config.js` y la fecha del pedido, no la del envío.
 - Prueba rápida (consola de `/delivery/`): `TFC.promoApplies({id:'en-caesar',station:{id:'ensaladas'}}, '2026-12-04')` → `true`; `TFC.promoPrice(10.99)` → `5.49`.
+- **Banner en el home** (dueño, 2026-11-20 y 2026-11-23): primera cosa debajo del menú de arriba, con la estrella «50% OFF», los platos rebajados con su precio real (normal tachado → rebajado, de la misma data y hoja de precios del menú) y un botón. Sale desde `announceDaysBefore` días antes (`1` = **el jueves**: «¡Mañana es viernes!», botón «Pedir para mañana» → `/delivery/?fecha=<viernes>`, que abre el formulario con el viernes ya escogido) hasta la **última llamada del viernes** (2:30 PM: «¡Hoy es viernes!», botón «Pedir ahora»). El viernes, mientras sale el banner, el menú del home también muestra los precios rebajados (normal tachado). Texto del banner: `name` (título) y `what` («ensaladas y ensalada de frutas»; si cambias `items`, cambia `what`). Código: `promoBanner()` en `site.js`.
+
+## Anuncio de catering: «¡No cotizamos! Danos tu presupuesto y te hacemos tu actividad.»
+Dueño, 2026-11-23: catering más agresivo en el home, **todos los días**. `cateringAd` en `config.js` (`false` lo esconde).
+- **Arriba del home**: los días sin banner del viernes (sáb.–mié. y el viernes después de la última llamada) es el banner grande (ámbar, «$ Tú pones el presupuesto», botón «Dinos tu presupuesto →» → `/catering/`); el jueves y el viernes baja a una **franja delgada** debajo del banner del viernes. Si el JavaScript no carga, se ve el banner grande. Textos: claves `ad.*` (español en `index.html`, inglés en `i18n.js`).
+- La sección «Catering» del home, el botón rojo del hero («Catering a tu presupuesto»), el botón del menú de arriba («Pedir / Catering»), la tarjeta de `/pedidos/` y `/catering/` dicen lo mismo; en el sitio ya no se habla de «cotización» (salvo `/privacidad/`, que no se tocó a propósito). Los dos banners son `<aside>` con el título en `<p>` (no `<h2>`), para que el primer encabezado de la página siga siendo el `<h1>` del hero.
+- **Sin saltos al cargar**: en el home `config.js` se carga en el `<head>` y un script corto justo después de los banners decide, antes del primer pintado, si es día de promo (jueves o viernes antes de la última llamada): muestra el espacio del banner del viernes y pone el anuncio de catering en franja. `site.js` luego lo llena (y tiene la última palabra; si cambias la regla en `TFC.promoNext`, cámbiala también ahí). Una pestaña que se queda abierta se revisa cada minuto, así que el banner cambia sola a las 2:30 PM del viernes y a medianoche.
+- **Formulario** (`/catering/`): «Tu presupuesto total para la actividad ($)» es **obligatorio** (número entero, al lado de «Número de personas»), con un estimado en vivo «≈ $X por persona» (presupuesto ÷ personas, hacia abajo al centavo). El correo trae `Presupuesto total` y `Por persona (aprox.)` (y el total en el asunto); `Tipo: Catering a presupuesto del cliente`. Se quitó el selector viejo «Presupuesto por persona (opcional)».
 
 ## Menú criollo del día (Google Sheet)
 

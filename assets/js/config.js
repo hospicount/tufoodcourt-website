@@ -69,6 +69,10 @@ window.TFC_CONFIG = {
     from: '2026-11-20', // owner (2026-11-20): start the same day — Friday 2026-11-20 is the first promo day
     items: ['ensaladas', 'de-frutas'],
     name: { es: 'Viernes de ensaladas', en: 'Salad Friday' },
+    what: { es: 'ensaladas y ensalada de frutas', en: 'salads and fruit salad' }, // wording for the home banner (keep in step with `items`)
+    // Home banner: shown from this many days before the promo day until that day's last call (owner, 2026-11-23: «every Thursday, start
+    // with the Friday 50% off» → 1 = from Thursday). The rest of the week the top of the home page runs the catering ad instead.
+    announceDaysBefore: 1,
   },
   paymentOptions: ['ATH Móvil', 'Tarjeta de crédito', 'Efectivo'], // Spanish values; EN display in i18n.js TFC_EN_VALUES
   confirmChannels: ['Llamada', 'Texto (SMS)', 'WhatsApp', 'Email'],
@@ -76,6 +80,9 @@ window.TFC_CONFIG = {
 
   // Catering: how many hours before the service time a request must arrive (48 = two days). No minimum headcount.
   cateringLeadHours: 48,
+  // Home page catering ad («¡No cotizamos! Danos tu presupuesto y te hacemos tu actividad.», owner 2026-11-23): runs every day — the big
+  // banner at the top of the home page, or a slim strip under the Friday-promo banner while that one is on. false = hide both.
+  cateringAd: true,
 
   // "Hoy en la línea criolla": a Google Sheet the owner edits (one row per day, see README). Share the sheet as
   // "Anyone with the link → Viewer" (never Editor) and paste the long ID from its URL

@@ -933,8 +933,8 @@
           Idioma: TFC.lang(),
           Origen: source(),
           _autoresponse: L(
-            `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu solicitud de catering ${ref}: ${f.tipo_evento}, ${fmtDate(f.fecha_evento)} a las ${fmtTime(f.hora)}, ${f.invitados} personas, presupuesto ${total} (${f.estaciones}; ${f.servicio}).\n\nTe contactamos dentro de 1 día laborable por ${f.contacto_pref} con el menú para tu presupuesto.\n\n— Tu Food Court · Metro Medical Center`,
-            `Thanks, ${cleanName(f.nombre)}! We received your catering request ${ref}: ${f.tipo_evento}, ${fmtDate(f.fecha_evento)} at ${fmtTime(f.hora)}, ${f.invitados} guests, budget ${total} (${f.estaciones}; ${f.servicio}).\n\nWe'll contact you within 1 business day via ${f.contacto_pref} with the menu for your budget.\n\n— Tu Food Court · Metro Medical Center`),
+            `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu solicitud de catering ${ref}: ${f.tipo_evento}, ${fmtDate(f.fecha_evento)} a las ${fmtTime(f.hora)}, ${f.invitados} personas${total ? ', presupuesto ' + total : ''} (${f.estaciones}; ${f.servicio}).\n\nTe contactamos dentro de 1 día laborable por ${f.contacto_pref} con ${total ? 'el menú para tu presupuesto' : 'una propuesta de menú'}.\n\n— Tu Food Court · Metro Medical Center`,
+            `Thanks, ${cleanName(f.nombre)}! We received your catering request ${ref}: ${f.tipo_evento}, ${fmtDate(f.fecha_evento)} at ${fmtTime(f.hora)}, ${f.invitados} guests${total ? ', budget ' + total : ''} (${f.estaciones}; ${f.servicio}).\n\nWe'll contact you within 1 business day via ${f.contacto_pref} with ${total ? 'the menu for your budget' : 'a menu proposal'}.\n\n— Tu Food Court · Metro Medical Center`),
         };
         const summaryHtml = `<p><strong>${esc(tr(f.tipo_evento))}</strong> · ${esc(fmtDate(f.fecha_evento))} · ${esc(fmtTime(f.hora))} · ${esc(f.invitados)} ${L('personas', 'guests')}</p>
           <p>${f.estaciones.split(', ').map((s) => esc(tr(s))).join(', ')} · ${esc(tr(f.servicio))}</p>

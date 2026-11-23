@@ -8,7 +8,7 @@ Sitio estático (HTML/CSS/JS sin build) para **tufoodcourtpr.com**. Español por
 | `/` | Home: franja de arriba (promo del viernes jue–vie / anuncio de catering), hero, tres estaciones, menú por pestañas, delivery MMC, catering, visítanos |
 | `/pedidos/` | **Destino del código QR.** Elige Delivery o Catering |
 | `/delivery/` | Formulario de pedido: delivery (exclusivo empleados de Metro Medical Center) o recogido en el mostrador; para hoy o programado hasta 14 días |
-| `/catering/` | Formulario de catering «¡No cotizamos! Danos tu presupuesto» (presupuesto total obligatorio) |
+| `/catering/` | Formulario de catering «¡No cotizamos! Danos tu presupuesto» (presupuesto total opcional) |
 | `/qr/` | Afiche carta + tarjetas de mostrador 4-up listos para imprimir (noindex) |
 | `/privacidad/` | Política de privacidad |
 
@@ -50,7 +50,7 @@ Cada solicitud trae un número de referencia (`TFC-D-aammdd-XXXX` delivery, `TFC
 3. En Squarespace DNS: **borrar primero los registros A / CNAME por defecto de Squarespace** (si quedan, Pages falla de forma intermitente y no emite el certificado), luego añadir registros `A` del apex a `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` y `CNAME www → hospicount.github.io`. Activar "Enforce HTTPS" en Pages cuando valide el certificado (puede tardar hasta 24 h).
 
 ## Caché
-Los `<script>`/`<link>` llevan `?v=20261123a`. Cuando cambies cualquier archivo de `assets/js` (`config.js`, `menu.js`, `i18n.js`, `forms.js`, `site.js`, `prices.js`, `criollo.js`) o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
+Los `<script>`/`<link>` llevan `?v=20261123b`. Cuando cambies cualquier archivo de `assets/js` (`config.js`, `menu.js`, `i18n.js`, `forms.js`, `site.js`, `prices.js`, `criollo.js`) o el CSS, sube ese número en los 7 HTML (buscar y reemplazar) para que los teléfonos que ya visitaron el sitio reciban la versión nueva de inmediato.
 
 ## Vista previa local
 ```bash
@@ -101,7 +101,7 @@ Dueño, 2026-11-23: catering más agresivo en el home, **todos los días**. `cat
 - **Arriba del home**: los días sin banner del viernes (sáb.–mié. y el viernes después de la última llamada) es el banner grande (ámbar, «$ Tú pones el presupuesto», botón «Dinos tu presupuesto →» → `/catering/`); el jueves y el viernes baja a una **franja delgada** debajo del banner del viernes. Si el JavaScript no carga, se ve el banner grande. Textos: claves `ad.*` (español en `index.html`, inglés en `i18n.js`).
 - La sección «Catering» del home, el botón rojo del hero («Catering a tu presupuesto»), el botón del menú de arriba («Pedir / Catering»), la tarjeta de `/pedidos/` y `/catering/` dicen lo mismo; en el sitio ya no se habla de «cotización» (salvo `/privacidad/`, que no se tocó a propósito). Los dos banners son `<aside>` con el título en `<p>` (no `<h2>`), para que el primer encabezado de la página siga siendo el `<h1>` del hero.
 - **Sin saltos al cargar**: en el home `config.js` se carga en el `<head>` y un script corto justo después de los banners decide, antes del primer pintado, si es día de promo (jueves o viernes antes de la última llamada): muestra el espacio del banner del viernes y pone el anuncio de catering en franja. `site.js` luego lo llena (y tiene la última palabra; si cambias la regla en `TFC.promoNext`, cámbiala también ahí). Una pestaña que se queda abierta se revisa cada minuto, así que el banner cambia sola a las 2:30 PM del viernes y a medianoche.
-- **Formulario** (`/catering/`): «Tu presupuesto total para la actividad ($)» es **obligatorio** (número entero, al lado de «Número de personas»), con un estimado en vivo «≈ $X por persona» (presupuesto ÷ personas, hacia abajo al centavo). El correo trae `Presupuesto total` y `Por persona (aprox.)` (y el total en el asunto); `Tipo: Catering a presupuesto del cliente`. Se quitó el selector viejo «Presupuesto por persona (opcional)».
+- **Formulario** (`/catering/`): «Tu presupuesto total para la actividad ($)» es **opcional** (dueño, 2026-11-23; número entero, al lado de «Número de personas»; en blanco el correo dice `Presupuesto total: No indicado`), con un estimado en vivo «≈ $X por persona» (presupuesto ÷ personas, hacia abajo al centavo). El correo trae `Presupuesto total` y `Por persona (aprox.)` (y el total en el asunto); `Tipo: Catering a presupuesto del cliente`. Se quitó el selector viejo «Presupuesto por persona (opcional)».
 
 ## Menú criollo del día (Google Sheet)
 

@@ -20,7 +20,7 @@
   <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
   <link rel="preload" href="/assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/alfa-slab-one-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/site.css?v=20261123a">
+  <link rel="stylesheet" href="/assets/css/site.css?v=20261123b">
 </head>
 <body data-page="catering" data-title-en="Catering on your budget · Tu Food Court · Bayamón">
   <a class="skip" href="#main" data-i18n="skip">Saltar al contenido</a>
@@ -108,9 +108,9 @@
                   <input id="c-inv" name="invitados" type="number" required min="1" max="2000" step="1" inputmode="numeric">
                 </div>
                 <div class="field span-2 budget-field">
-                  <label for="c-pres" data-i18n="c.budget">Tu presupuesto total para la actividad ($)</label>
-                  <input id="c-pres" name="presupuesto" type="number" required min="1" max="100000" step="1" inputmode="numeric" data-i18n-ph="c.budgetPh" placeholder="Ej. 300">
-                  <p class="budget-note"><span data-i18n="c.budgetHint">Lo que quieres gastar en total; con eso armamos el menú.</span> <strong data-per-person aria-live="polite"></strong></p>
+                  <label for="c-pres" data-i18n="c.budget">Tu presupuesto total para la actividad ($) <span class="hint">(opcional)</span></label>
+                  <input id="c-pres" name="presupuesto" type="number" min="1" max="100000" step="1" inputmode="numeric" data-i18n-ph="c.budgetPh" placeholder="Ej. 300">
+                  <p class="budget-note"><span data-i18n="c.budgetHint">Lo que quieres gastar en total; con eso armamos el menú. ¿Aún no lo sabes? Déjalo en blanco y te ayudamos.</span> <strong data-per-person aria-live="polite"></strong></p>
                 </div>
                 <div class="field span-3" role="group" aria-labelledby="c-where-l">
                   <span class="label" id="c-where-l" data-i18n="c.whereT">¿Dónde es el evento?</span>
@@ -185,9 +185,9 @@
 
   <footer class="site-footer" data-site-footer></footer>
 
-  <script src="/assets/js/config.js?v=20261123a"></script>
-  <script src="/assets/js/i18n.js?v=20261123a"></script>
-  <script src="/assets/js/site.js?v=20261123a"></script>
-  <script src="/assets/js/forms.js?v=20261123a"></script>
+  <script src="/assets/js/config.js?v=20261123b"></script>
+  <script src="/assets/js/i18n.js?v=20261123b"></script>
+  <script src="/assets/js/site.js?v=20261123b"></script>
+  <script src="/assets/js/forms.js?v=20261123b"></script>
 </body>
 </html>

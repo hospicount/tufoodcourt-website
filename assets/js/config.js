@@ -19,12 +19,11 @@ window.TFC_CONFIG = {
   // its menu tab becomes a preview without prices, it cannot be ordered and its catering option is disabled.
   // A dish shows «Próximamente» instead of its price and cannot be ordered. To open one, remove its id here
   // (for a station also rewrite the "muy pronto" sentences: README → Estaciones y platos próximamente).
-  // (Pizza opened 2026-11-24, soft opening that week: owner. Mexicano opened 2026-11-05 with a limited menu: the «Precios» tab hides everything
-  // but nachos Carne/Carnitas and Cielito Lindo.)
+  // (Pizza opened 2026-11-24, soft opening that week: owner. Mexicano opened 2026-11-05 with a limited menu; what it does not sell yet is
+  // «No» in the «Precios» tab. Chicken nachos opened 2026-11-24 as the «Pollo» choice of the nachos.)
   comingSoon: [
-    'catering-tacos',                           // the «Barra de tacos» option of the catering form stays disabled while the Mexican station sells nachos only
+    'catering-tacos',                           // the «Barra de tacos» option of the catering form stays disabled (the owner has not opened taco bars for catering)
     'po-flan', 'po-tres-leches',                // desserts (available now: fruit salad, Choco Fudge Cake and Carrot Cake)
-    'na-nachos-pollo',                          // chicken nachos (Carne and Carnitas nachos are sold now)
   ],
 
   // Opening hours — single source for the footer, the "Visítanos" card and the order time windows.

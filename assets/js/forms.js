@@ -72,8 +72,8 @@
   // ---------- validation ----------
   function message(el) {
     const v = el.validity;
+    if (v.customError) return el.validationMessage; // first: the «Quitar algo» checkboxes of a cart line carry their own text
     if (el.type === 'checkbox') return L('Requerido para continuar.', 'Required to continue.');
-    if (v.customError) return el.validationMessage;
     if (v.valueMissing && el.dataset.gone && el.dataset.goneOut) return L(`Esa hora queda fuera del horario de lo que pediste (${el.dataset.goneOut}); elige otra.`, `That time is outside the hours for what you ordered (${el.dataset.goneOut}); please choose another.`);
     if (v.valueMissing && el.dataset.gone) return L('La hora que elegiste ya no está disponible; elige otra.', 'The time you chose is no longer available; please choose another.');
     if (v.valueMissing) return el.tagName === 'SELECT' ? L('Elige una opción.', 'Choose an option.') : L('Este campo es requerido.', 'This field is required.');
@@ -107,7 +107,7 @@
         msg.className = 'field-error';
         msg.dataset.dyn = '1';
         msg.textContent = message(el);
-        (line || el.closest('.field') || el.closest('.check') || el.parentElement).appendChild(msg);
+        (el.closest('.cart-sin') || line || el.closest('.field') || el.closest('.check') || el.parentElement).appendChild(msg); // «Quitar algo»: under its boxes
         if (!firstBad) firstBad = el;
       }
     });
@@ -327,10 +327,34 @@
     // order texts (the criollo plate's Regular/Combo option while the Combo is off).
     function shownOptions(it) { return (it.options || []).filter((o) => !o.hidden); }
     function autoValue(o) { return o.hidden ? (o.choices[0] || '') : ''; }
-    function optsText(l) { // chosen values of the visible options, in menu order
+    // An option with `when` (menu.js: the drink of the 10" pizza) only applies while another option of the line has that value.
+    const isOn = (o, l) => !o.when || l.opts[o.when.key] === o.when.is;
+    function activeOptions(it, l) { return shownOptions(it).filter((o) => isOn(o, l)); }
+    // «Preparación» of a dish with `includes` (menu.js withIncludes): the SECOND choice («Quitar algo») means some items are left out.
+    const removing = (o, l) => !!o.sin && l.opts[o.key] === o.choices[1];
+    const prepOption = (it) => shownOptions(it).find((o) => o.sin && (it.includes || []).length);
+    function leftOut(it, l) { const s = new Set(l.sin || []); return (it.includes || []).filter((x) => s.has(x.es)); } // menu order
+    // Keeps a line consistent with its dish: blanks an option whose `when` no longer holds and keeps only known, unrepeated left-out items.
+    function normalizeLine(it, l) {
+      (it.options || []).forEach((o) => { if (!isOn(o, l)) l.opts[o.key] = ''; });
+      const names = (it.includes || []).map((x) => x.es);
+      l.sin = (Array.isArray(l.sin) ? l.sin : []).filter((n, i, a) => names.includes(n) && a.indexOf(n) === i);
+    }
+    // «Carne, Roja, Coca-Cola; sin guacamole, sin sour cream»: the chosen values of the options that apply, then «con todo» or what is
+    // left out. forKitchen = Spanish (the email to the owner); otherwise the customer's language.
+    function optsText(l, forKitchen) {
       const it = allItems[l.id];
-      if (!it) return Object.values(l.opts).filter(Boolean);
-      return shownOptions(it).map((o) => l.opts[o.key]).filter(Boolean);
+      const val = (v) => (forKitchen ? v : tr(v));
+      if (!it) return Object.values(l.opts || {}).filter(Boolean).map(val).join(', ');
+      const main = [], prep = [];
+      activeOptions(it, l).forEach((o) => {
+        const v = l.opts[o.key];
+        if (!v) return;
+        if (!o.sin) { main.push(val(v)); return; }
+        if (!removing(o, l)) { prep.push(forKitchen ? 'con todo' : L('con todo', 'everything on it')); return; }
+        leftOut(it, l).forEach((x) => prep.push(forKitchen ? `sin ${x.es.toLowerCase()}` : L(`sin ${x.es.toLowerCase()}`, `no ${x.en.toLowerCase()}`)));
+      });
+      return main.join(', ') + (main.length && prep.length ? '; ' : '') + prep.join(', ');
     }
 
     function renderPicker() {
@@ -343,6 +367,8 @@
       const soon = TFC.isSoon(s.id);
       const sh = TFC.time.stationHours(s.id); // «Horario de las pizzas: 10:30 AM – 3:00 PM» (config.stationHours)
       const pickable = (sec) => sec.items.filter((i) => i.orderable && i.available !== false);
+      // `pickNote` of a section (menu.js; e.g. «La pizza de 10" incluye una bebida a tu elección»), while that section has dishes to order.
+      const notes = soon ? [] : s.sections.filter((sec) => sec.pickNote && pickable(sec).some((i) => !TFC.isSoon(i.id))).map((sec) => TFC.pick(sec.pickNote));
       const list = soon ? '' : s.sections.map((sec) => pickable(sec).map((it) => TFC.isSoon(it.id) ? `
           <div class="pick-item pick-soon">
             <span class="pick-main"><span class="mi-name">${esc(tr(it.name))}</span>${it.desc ? `<span class="mi-desc">${esc(TFC.pick(it.desc))}</span>` : ''}</span>
@@ -360,6 +386,7 @@
         ${!soon && sh ? `<p class="pick-hours">${esc(adding
           ? L(`Horario de ${sh.label}: ${sh.text}. Una adición mantiene la hora de tu pedido.`, `Hours for ${sh.label}: ${sh.text}. An addition keeps your order's time.`)
           : L(`Horario de ${sh.label}: ${sh.text}. Con ${sh.label} en tu pedido, solo puedes elegir horas dentro de ese horario.`, `Hours for ${sh.label}: ${sh.text}. With ${sh.label} in your order, only times within those hours can be chosen.`))}</p>` : ''}
+        ${notes.map((n) => `<p class="pick-hours">${esc(n)}</p>`).join('')}
         <div class="pick-list">${soon ? `<p class="soon-note">${L('<strong>Próximamente.</strong> Esta estación abre muy pronto. Por ahora puedes pedir de las demás estaciones.', '<strong>Coming soon.</strong> This station opens soon. For now you can order from the other stations.')}</p>`
           : list || `<p class="menu-empty">${L('Sin platos disponibles por ahora.', 'No dishes available right now.')}</p>`}</div>`;
       picker.querySelectorAll('[data-station]').forEach((b) => b.addEventListener('click', () => {
@@ -394,7 +421,9 @@
           }
           const opts = {};
           (it.options || []).forEach((o) => { const v = l.opts && l.opts[o.key]; if (o.choices.includes(v)) opts[o.key] = v; else { opts[o.key] = autoValue(o); if (v && !o.hidden) lostOption = true; } });
-          cart.push({ uid: Math.random().toString(36).slice(2), id: l.id, name: it.name, qty: Math.max(1, Math.min(99, parseInt(l.qty, 10) || 1)), opts, note: String(l.note || '').slice(0, 140) });
+          const line = { uid: Math.random().toString(36).slice(2), id: l.id, name: it.name, qty: Math.max(1, Math.min(99, parseInt(l.qty, 10) || 1)), opts, sin: l.sin, note: String(l.note || '').slice(0, 140) };
+          normalizeLine(it, line);
+          cart.push(line);
         });
         // Tell the customer what a saved cart lost (e.g. a dish added before it was marked «Próximamente»).
         cartNotice = [
@@ -420,7 +449,7 @@
       else {
         const opts = {};
         (it.options || []).forEach((o) => { opts[o.key] = autoValue(o); }); // customer must choose (no silent defaults), except hidden options
-        line = { uid: Math.random().toString(36).slice(2), id, name: it.name, qty: 1, opts, note: '' };
+        line = { uid: Math.random().toString(36).slice(2), id, name: it.name, qty: 1, opts, sin: [], note: '' }; // sin = included items left out
         cart.push(line);
       }
       cartErr.hidden = true;
@@ -472,13 +501,19 @@
             </div>
             <button type="button" class="cart-remove" data-remove aria-label="${L('Quitar', 'Remove')}: ${name}">✕</button>
           </div>
-          ${shownOptions(it).length ? `<div class="cart-opts">${shownOptions(it).map((o) => `
-            <label>${esc(TFC.pick(o.label))}
-              <select name="cart-opt" data-opt="${o.key}" aria-label="${esc(TFC.pick(o.label))}: ${name}" required>
+          ${shownOptions(it).length ? `<div class="cart-opts">${shownOptions(it).map((o) => { const on = isOn(o, l); return `
+            <label data-opt-wrap="${o.key}"${on ? '' : ' hidden'}>${esc(TFC.pick(o.label))}
+              <select name="cart-opt" data-opt="${o.key}" aria-label="${esc(TFC.pick(o.label))}: ${name}" ${on ? 'required' : 'disabled'}>
                 <option value="">${L('Elige…', 'Choose…')}</option>
                 ${o.choices.map((c) => `<option value="${esc(c)}"${l.opts[o.key] === c ? ' selected' : ''}>${esc(tr(c))}</option>`).join('')}
               </select>
-            </label>`).join('')}</div>` : ''}
+            </label>`; }).join('')}</div>` : ''}
+          ${prepOption(it) ? `<fieldset class="cart-sin" data-sin${removing(prepOption(it), l) ? '' : ' hidden'}>
+            <legend>${L('Marca lo que no quieres', 'Check what you don\'t want')}<span class="sr-only">: ${name}</span></legend>
+            <div class="sin-list">${it.includes.map((x) => `
+              <label class="sin-item"><input type="checkbox" name="cart-sin" value="${esc(x.es)}"${l.sin.includes(x.es) ? ' checked' : ''}> ${esc(L('Sin ', 'No ') + (TFC.lang() === 'en' ? x.en : x.es).toLowerCase())}</label>`).join('')}
+            </div>
+          </fieldset>` : ''}
           <input name="cart-note" class="cart-note" type="text" maxlength="140" value="${esc(l.note)}" aria-label="${L('Nota', 'Note')}: ${name}"
             placeholder="${esc(it.notePh ? TFC.pick(it.notePh) : L('Nota (opcional): sin cebolla, extra salsa…', 'Note (optional): no onion, extra sauce…'))}">
         </div>`;
@@ -494,12 +529,50 @@
         row.querySelector('[data-dec]').addEventListener('click', () => set(l.qty - 1));
         qty.addEventListener('change', () => set(parseInt(qty.value, 10)));
         row.querySelector('[data-remove]').addEventListener('click', () => { cart.splice(cart.indexOf(l), 1); renderCart(); cartTitle.focus(); });
-        row.querySelectorAll('[data-opt]').forEach((s) => s.addEventListener('change', () => { l.opts[s.dataset.opt] = s.value; refreshTotals(); s.removeAttribute('aria-invalid'); const err = row.querySelector('.field-error[data-dyn]'); if (err && row.querySelectorAll('select:invalid').length === 0) err.remove(); }));
+        row.querySelectorAll('[data-opt]').forEach((s) => s.addEventListener('change', () => { l.opts[s.dataset.opt] = s.value; syncLine(row, l); refreshTotals(); lineErrors(row); }));
+        row.querySelectorAll('[name=cart-sin]').forEach((c) => c.addEventListener('change', () => {
+          l.sin = [...row.querySelectorAll('[name=cart-sin]:checked')].map((x) => x.value);
+          syncLine(row, l); lineErrors(row); saveCart();
+        }));
+        syncLine(row, l);
         row.querySelector('.cart-note').addEventListener('input', (e) => { l.note = e.target.value; saveCart(); });
         // Enter inside a cart field must not submit the whole form.
         row.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); } }));
       });
       refreshTotals();
+    }
+
+    // Shows the options that apply to the line now (the 10" pizza's drink; the «Quitar algo» boxes) and sets their validity:
+    // with «Quitar algo», at least one box must be checked (every box carries the message, so checking any one clears it).
+    function syncLine(row, l) {
+      const it = allItems[l.id];
+      if (!it) return;
+      shownOptions(it).forEach((o) => {
+        if (!o.when) return;
+        const wrap = row.querySelector(`[data-opt-wrap="${o.key}"]`);
+        const sel = wrap && wrap.querySelector('select');
+        if (!sel) return;
+        const on = isOn(o, l);
+        if (!on && l.opts[o.key]) { l.opts[o.key] = ''; sel.value = ''; }
+        wrap.hidden = !on; sel.disabled = !on; sel.required = on;
+      });
+      const box = row.querySelector('[data-sin]');
+      if (!box) return;
+      const po = prepOption(it);
+      const on = !!po && removing(po, l);
+      box.hidden = !on;
+      const none = on && !box.querySelector('input:checked');
+      box.querySelectorAll('input[type=checkbox]').forEach((c) => c.setCustomValidity(none ? L('Marca lo que quieres quitar, o elige «Con todo».', 'Check what to leave out, or choose «Everything on it».') : ''));
+    }
+    // A line's messages (validate() writes one per field name) go away once what they point at is fixed, hidden or no longer asked for.
+    function lineErrors(row) {
+      ['cart-opt', 'cart-sin'].forEach((nm) => {
+        const els = [...row.querySelectorAll(`[name="${nm}"]`)];
+        const ok = (el) => el.disabled || !!el.closest('[hidden]') || el.validity.valid;
+        els.forEach((el) => { if (ok(el)) el.removeAttribute('aria-invalid'); });
+        const msg = document.getElementById('err-' + nm + row.dataset.uid);
+        if (msg && msg.dataset.dyn && els.every(ok)) { els.forEach((el) => el.removeAttribute('aria-describedby')); msg.remove(); }
+      });
     }
 
     // ----- prices -----
@@ -539,7 +612,7 @@
         <small>${L('IVU no incluido', 'IVU (sales tax) not included')}${cart.some((l) => typeof linePrice(l) === 'number' && promoLine(l)) ? ' · ' + L('incluye ', 'includes ') + esc(TFC.promoName(false)) + ' (' + esc(TFC.promoLabel(false)) + ')' : ''}${t.unpriced ? L(' · hay artículos al precio del mostrador', ' · some items at counter price') : ''}${t.pending ? L(' · elige las opciones que faltan', ' · choose the missing options') : ''}</small>`;
     }
     function lineText(l, withNote) {
-      const opts = optsText(l).join(', ');
+      const opts = optsText(l, withNote);
       const p = linePrice(l);
       const price = p === null ? (withNote ? ' — precio en mostrador' : L(' — precio en mostrador', ' — counter price')) : p === undefined ? '' : ` — ${TFC.money(p)}`; // kitchen lines (withNote) stay in Spanish
       return `${l.qty} × ${l.name}${opts ? ` (${opts})` : ''}${price}${promoNote(l, withNote)}${withNote && l.note ? ` · ${l.note}` : ''}`;
@@ -766,6 +839,7 @@
           if (o.hidden) { l.opts[o.key] = autoValue(o); return; }
           if (l.opts[o.key] && !o.choices.includes(l.opts[o.key])) { l.opts[o.key] = ''; cleared.push(l); }
         });
+        normalizeLine(it, l); // e.g. a 10" pizza whose size was just cleared drops its drink
       }
       const oldList = picker.querySelector('.pick-list');
       const scrollTop = oldList ? oldList.scrollTop : 0;
@@ -870,7 +944,9 @@
         const emp = needsEmployee();
         let ref;
         if (adding) {
-          const key = JSON.stringify([cart.map((l) => [l.id, l.qty, l.opts, l.note]), f.notas]);
+          // From what the email will say (optsText = the kitchen's text), not the raw line: «sin …» boxes left ticked under «Con todo»
+          // must not make a retry look like a different addition.
+          const key = JSON.stringify([cart.map((l) => [l.id, l.qty, optsText(l, true), l.note]), f.notas]);
           if (sent.tried && sent.tryKey !== key) sent.adds += 1; // another addition after a failed attempt: burn the number the first one may have used
           sent.tried = true; sent.tryKey = key;
           ref = `${sent.ref}-A${sent.adds + 1}`;
@@ -921,7 +997,7 @@
             `¡Gracias, ${cleanName(f.nombre)}! Recibimos tu ${adding ? `adición ${ref} al pedido ${sent.ref}` : `pedido ${ref}`}.\n\n${adding ? 'Lo que añadiste' : 'Pedido'}:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Recoger en' : 'Entrega'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\n${adding ? 'Subtotal de esta adición' : 'Subtotal'}: ${subtotalEs}\nPago ${pickup ? 'al recoger' : 'al recibir'}: ${f.pago}\n\nTe confirmaremos el total y la hora por ${f.confirmar_por || 'teléfono o email'} antes de preparar tu pedido.${emp ? ' Recuerda tener tu identificación de empleado a la mano.' : ''}\n\n— Tu Food Court · Metro Medical Center`,
             `Thanks, ${cleanName(f.nombre)}! We received your ${adding ? `addition ${ref} to order ${sent.ref}` : `order ${ref}`}.\n\n${adding ? 'What you added' : 'Order'}:\n${cart.map((l) => '• ' + lineText(l, false)).join('\n')}\n\n${pickup ? 'Pick up at' : 'Deliver to'}: ${pickup ? pickupPlace : clean(f.entrega, 80)} — ${when}\n${adding ? 'Subtotal of this addition' : 'Subtotal'}: ${subtotalEn}\nPay ${pickup ? 'at pickup' : 'on delivery'}: ${f.pago}\n\nWe'll confirm the total and time by ${f.confirmar_por || 'phone or email'} before preparing your order.${emp ? ' Please have your employee ID ready.' : ''}\n\n— Tu Food Court · Metro Medical Center`),
         });
-        const summaryHtml = `${adding ? `<p><strong>${L('Adición al pedido', 'Addition to order')}:</strong> ${esc(sent.ref)}</p>` : ''}<ul>${cart.map((l) => { const p = linePrice(l); return `<li>${esc(l.qty)} × ${esc(tr(l.name))}${optsText(l).length ? ` (${optsText(l).map((v) => esc(tr(v))).join(', ')})` : ''}${p == null ? '' : ` — ${TFC.money(p)}`}${esc(promoNote(l, false))}${l.note ? ` · ${esc(l.note)}` : ''}</li>`; }).join('')}</ul>
+        const summaryHtml = `${adding ? `<p><strong>${L('Adición al pedido', 'Addition to order')}:</strong> ${esc(sent.ref)}</p>` : ''}<ul>${cart.map((l) => { const p = linePrice(l); return `<li>${esc(l.qty)} × ${esc(tr(l.name))}${optsText(l, false) ? ` (${esc(optsText(l, false))})` : ''}${p == null ? '' : ` — ${TFC.money(p)}`}${esc(promoNote(l, false))}${l.note ? ` · ${esc(l.note)}` : ''}</li>`; }).join('')}</ul>
           <p><strong>${adding ? L('Subtotal de esta adición', 'Subtotal of this addition') : 'Subtotal'}:</strong> ${esc(L(subtotalEs, subtotalEn))}</p>
           <p><strong>${pickup ? L('Recoger en', 'Pick up at') : L('Entrega', 'Deliver to')}:</strong> ${esc(pickup ? pickupPlace : f.entrega)} · ${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))}</p>
           <p><strong>${L('Te confirmamos por', 'We confirm by')}:</strong> ${esc(tr(f.confirmar_por || ''))}</p>`;

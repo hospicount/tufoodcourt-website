@@ -5,6 +5,11 @@
 // An option with `hidden: true` has no select: its first choice is picked automatically and it is left out of order texts;
 // when it is also the `priceBy` option the price shows without the option name (the criollo plate while the Combo is off).
 // `orderable` items appear in the delivery/pickup picker. `options` render as required selects on each cart line.
+// An option with `when: { key, is }` only shows (and is only required) while the option `key` of the same line is `is`; otherwise it is
+// left blank and out of the order texts (the drink that comes with the 10" pizza).
+// `includes` = what comes with a dish, as { es, en } names (owner, 2026-11-24): the dish gets a required «Preparación» select
+// (see withIncludes below): «Con todo», or «Quitar algo», which shows a checkbox per included item to leave out. The order email says
+// «con todo» or «sin guacamole, sin sour cream». Leaving something out does not change the price.
 // Listed under Desayuno and Postres. It is one shared object, so a price or «Disponible» change in the sheet applies to both.
 const TFC_FRUTAS = { id: 'de-frutas', name: 'Ensalada de frutas', price: 7, orderable: true };
 
@@ -24,6 +29,19 @@ const TFC_BEBIDAS = [
   { id: 'bb-welchs-fresa-kiwi', name: "Welch's Strawberry Kiwi", price: 1.5 },
   { id: 'bb-welchs-manzana', name: "Welch's Apple Juice", price: 1.5 },
 ].map((b) => ({ ...b, exact: true, orderable: true }));
+
+// The drink that comes with a dish (owner, 2026-11-24: the criollo plate, the 10" pizza and the tacos «include a drink of preference»).
+// A required select with the names of the drinks still available (`choicesFrom: 'bebidas'`, rebuilt by prices.js from the «Precios» tab).
+// No «Sin bebida» choice (owner, 2026-11-24: the drink is always chosen). `when` = only for some choices of another option (the 10" pizza).
+const bebidaIncluida = (when) => ({ key: 'bebida', label: { es: 'Bebida', en: 'Drink' }, choices: TFC_BEBIDAS.map((b) => b.name), choicesFrom: 'bebidas', ...(when ? { when } : {}) });
+
+// «Con todo» / «Quitar algo» (owner, 2026-11-24: «customers get to select if they want with everything or if they want without
+// something»; they chose a required «Con todo / Quitar algo» select over pre-checked boxes). forms.js reads `sin: true`: the FIRST
+// choice means everything, the SECOND shows a checkbox per item of `includes` to leave out (at least one must be checked).
+// Keep the choices in this order; the English display names are in i18n.js (TFC_EN_VALUES).
+function withIncludes(item, includes) {
+  return { ...item, includes, options: [...(item.options || []), { key: 'prep', label: { es: 'Preparación', en: 'Preparation' }, choices: ['Con todo', 'Quitar algo'], sin: true }] };
+}
 
 window.TFC_MENU = [
   {
@@ -62,7 +80,7 @@ window.TFC_MENU = [
           en: 'Build your plate from today\'s line: rice, stew and protein of the day. Write your preference in the note and we confirm what\'s available.',
         },
         items: [
-          { id: 'cr-plato', name: 'Plato criollo del día', desc: { es: 'Arroz, guiso, proteína del día y bebida', en: 'Rice, stew, protein of the day and a drink' }, orderable: true,
+          { id: 'cr-plato', name: 'Plato criollo del día', desc: { es: 'Arroz, guiso, proteína del día y bebida a tu elección', en: 'Rice, stew, protein of the day and a drink of your choice' }, orderable: true,
             options: [
               // «Opción» (Regular / Combo) is OFF for now (owner, 2026-11-11: "Eliminate the Opción for now"). The plate has a single price,
               // so this option is `hidden`: no select is shown and 'Regular' is chosen automatically (the sheet row «cr-plato / Regular»
@@ -70,7 +88,7 @@ window.TFC_MENU = [
               // and delete `hidden: true`.
               { key: 'tipo', label: { es: 'Opción', en: 'Option' }, choices: ['Regular'], hidden: true },
               // The drink comes with the plate (2026-11-11). Same names as the «Bebidas» station; see TFC_BEBIDAS.
-              { key: 'bebida', label: { es: 'Bebida', en: 'Drink' }, choices: TFC_BEBIDAS.map((b) => b.name), choicesFrom: 'bebidas' },
+              bebidaIncluida(),
             ],
             priceBy: 'tipo', prices: { 'Regular': 11.99 },
             notePh: { es: 'Ej.: arroz con gandules, habichuelas, pollo', en: 'E.g.: rice with pigeon peas, beans, chicken' } },
@@ -98,12 +116,14 @@ window.TFC_MENU = [
   {
     id: 'pizza',
     station: { es: 'Pizza', en: 'Pizza' },
-    tagline: { es: '10" personal o 16" grande', en: '10" personal or 16" large' },
+    tagline: { es: '10" personal (con bebida) o 16" grande', en: '10" personal (with a drink) or 16" large' },
     color: 'red',
     sections: [
       {
         title: { es: 'Las pizzas', en: 'The pizzas' },
-        note: { es: 'Precios 10" / 16".', en: 'Prices 10" / 16".' },
+        note: { es: 'Precios 10" / 16". La de 10" incluye una bebida a tu elección.', en: 'Prices 10" / 16". The 10" comes with a drink of your choice.' },
+        // Shown above these dishes on the order page (the home menu shows `note`).
+        pickNote: { es: 'La pizza de 10" incluye una bebida a tu elección.', en: 'The 10" pizza comes with a drink of your choice.' },
         items: [
           { id: 'pz-queso', name: 'Queso', desc: { es: 'La clásica de mozzarella', en: 'The mozzarella classic' }, prices: { '10"': 9, '16"': 18 } },
           { id: 'pz-pepperoni', name: 'Pepperoni', prices: { '10"': 10, '16"': 20 } },
@@ -116,6 +136,8 @@ window.TFC_MENU = [
           priceBy: 'tamano',
           options: [
             { key: 'tamano', label: { es: 'Tamaño', en: 'Size' }, choices: ['10"', '16"'] },
+            // Owner, 2026-11-24: «the 10" includes a drink of preference» (the 16" does not). Price unchanged.
+            bebidaIncluida({ key: 'tamano', is: '10"' }),
           ],
         })),
       },
@@ -124,17 +146,28 @@ window.TFC_MENU = [
   {
     id: 'mexicano',
     station: { es: 'Mexicano', en: 'Mexican' },
-    tagline: { es: 'Empezamos con nachos; el resto de la carta, muy pronto', en: 'Starting with nachos; the rest of the menu, coming soon' },
+    tagline: { es: 'Tacos y nachos; el resto de la carta, muy pronto', en: 'Tacos and nachos; the rest of the menu, coming soon' },
     color: 'amber',
     sections: [
       {
         title: { es: 'Tacos', en: 'Tacos' },
         items: [
-          { id: 'tc-tacos', name: 'Tacos', desc: { es: 'Carne, cerdo o pollo · salsa roja o verde', en: 'Beef, pork or chicken · red or green salsa' }, price: 8, orderable: true,
+          // Owner, 2026-11-24: «3 tacos per order. Includes a side of nachos with melted cheese, drink of choice, guacamole, sour cream,
+          // and pico de gallo». The price is the «Precios» row (tc-tacos).
+          withIncludes({ id: 'tc-tacos', name: 'Tacos',
+            desc: { es: '3 tacos por orden (carne, cerdo o pollo; salsa roja o verde). Incluye nachos con queso derretido, guacamole, sour cream, pico de gallo y bebida a tu elección.',
+              en: '3 tacos per order (beef, pork or chicken; red or green salsa). Includes nachos with melted cheese, guacamole, sour cream, pico de gallo and a drink of your choice.' },
+            price: 8, orderable: true,
             options: [
               { key: 'proteina', label: { es: 'Proteína', en: 'Protein' }, choices: ['Carne', 'Cerdo', 'Pollo'] },
               { key: 'salsa', label: { es: 'Salsa', en: 'Salsa' }, choices: ['Roja', 'Verde'] },
-            ] },
+              bebidaIncluida(),
+            ] }, [
+            { es: 'Nachos con queso derretido', en: 'Nachos with melted cheese' },
+            { es: 'Guacamole', en: 'Guacamole' },
+            { es: 'Sour cream', en: 'Sour cream' },
+            { es: 'Pico de gallo', en: 'Pico de gallo' },
+          ]),
         ],
       },
       {
@@ -149,13 +182,18 @@ window.TFC_MENU = [
       {
         title: { es: 'Nachos, papas y burger', en: 'Nachos, potatoes & burger' },
         items: [
-          { id: 'na-nachos', name: 'Nachos', orderable: true, // styles: the «Precios» tab hides Regular and Cerdo; Carne and Carnitas are sold at $12.99 (base 12)
-            options: [{ key: 'estilo', label: { es: 'Estilo', en: 'Style' }, choices: ['Regular', 'Carne', 'Carnitas', 'Cerdo'] }],
-            priceBy: 'estilo', prices: { 'Regular': 8, 'Carne': 12, 'Carnitas': 12, 'Cerdo': 12 } },
-          // Chicken nachos are «Próximamente» (owner, 2026-11-11): a separate dish listed in config.comingSoon, so it shows the tag instead of
-          // a price and cannot be ordered. When chicken is ready: remove 'na-nachos-pollo' from comingSoon and delete this item (or move
-          // 'Pollo' back into the choices and prices of na-nachos above).
-          { id: 'na-nachos-pollo', name: 'Nachos de pollo', price: 12, orderable: true },
+          // Owner, 2026-11-24: «All proteins are available. Includes Melted Cheese, Pico de Gallo, Guacamole, Sour Cream» → Carne, Pollo and
+          // Carnitas (owner's pick; the old «Cerdo» choice is gone, Carnitas is the pork) at $12.99 (base 12). «Regular» (no protein, $8.99)
+          // stays hidden by its «No» row in the «Precios» tab. The key stays 'estilo' so carts saved before keep their choice.
+          withIncludes({ id: 'na-nachos', name: 'Nachos', orderable: true,
+            desc: { es: 'Incluye queso derretido, pico de gallo, guacamole y sour cream.', en: 'Includes melted cheese, pico de gallo, guacamole and sour cream.' },
+            options: [{ key: 'estilo', label: { es: 'Proteína', en: 'Protein' }, choices: ['Regular', 'Carne', 'Pollo', 'Carnitas'] }],
+            priceBy: 'estilo', prices: { 'Regular': 8, 'Carne': 12, 'Pollo': 12, 'Carnitas': 12 } }, [
+            { es: 'Queso derretido', en: 'Melted cheese' },
+            { es: 'Pico de gallo', en: 'Pico de gallo' },
+            { es: 'Guacamole', en: 'Guacamole' },
+            { es: 'Sour cream', en: 'Sour cream' },
+          ]),
           { id: 'lp-potato', name: 'Loaded Potato', desc: { es: 'Carne, cerdo o pollo', en: 'Beef, pork or chicken' }, orderable: true,
             options: [{ key: 'proteina', label: { es: 'Proteína', en: 'Protein' }, choices: ['Carne', 'Cerdo', 'Pollo'] }],
             priceBy: 'proteina', prices: { 'Carne': 11, 'Cerdo': 10, 'Pollo': 10 } },
@@ -217,7 +255,7 @@ window.TFC_MENU = [
     sections: [
       {
         title: { es: 'Bebidas', en: 'Drinks' },
-        note: { es: 'La bebida de tu plato criollo se escoge en las opciones del plato. Aquí puedes añadir una adicional.', en: 'The drink for your criollo plate is chosen in the plate\'s options. Add an extra one here.' },
+        note: { es: 'El plato criollo, la pizza de 10" y los tacos incluyen bebida: se escoge en las opciones del plato. Aquí puedes añadir una adicional.', en: 'The criollo plate, the 10" pizza and the tacos come with a drink, chosen in the dish\'s options. Add an extra one here.' },
         items: TFC_BEBIDAS,
       },
     ],

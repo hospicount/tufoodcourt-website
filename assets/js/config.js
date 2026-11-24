@@ -41,6 +41,15 @@ window.TFC_CONFIG = {
     5: ['06:00', '15:00'],
     6: 'soon',
   },
+  // Hours of a station (or a single dish) inside the opening hours — owner, 2026-11-24: «The pizza hours are from 10:30am up to 3pm».
+  // Key = station id or dish id from menu.js; `from`/`until` = 24-hour 'HH:MM'; `label` = how sentences name it («Horario de las pizzas»).
+  // An order (or an addition) with one of these dishes only offers time windows inside those hours: starting at `from` or later and
+  // ending by `until` minus lastCallMinutesBeforeClose (pizza: 10:30 – 11:00 AM … 2:00 – 2:30 PM, like everything else). The home menu,
+  // the order page's Pizza tab and the home pizza ad show the hours. Catering requests are not limited (the owner arranges those).
+  // Remove an entry to lift the limit.
+  stationHours: {
+    pizza: { from: '10:30', until: '15:00', label: { es: 'las pizzas', en: 'pizzas' } },
+  },
   locationName: 'Metro Medical Center',
   locationArea: { es: 'Food Court · Bayamón, Puerto Rico', en: 'Food Court · Bayamón, Puerto Rico' },
   mapsQuery: 'Metro Medical Center Bayamón Puerto Rico',

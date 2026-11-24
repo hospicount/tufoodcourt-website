@@ -378,6 +378,7 @@ p { margin: 0 0 1em; }
 .panel-red .menu-section h3 { color: var(--red-deep); }
 .panel-amber .menu-section h3 { color: var(--red-deep); }
 .menu-note { font-size: .95rem; color: var(--muted); }
+.station-hours { margin-top: 2px; font-weight: 700; font-size: .95rem; color: var(--green-deep); } /* «Horario de las pizzas: 10:30 AM – 3:00 PM» */
 .menu-loading, .menu-empty { color: var(--muted); font-size: .95rem; margin: 6px 0; min-height: 2.5em; } /* while prices.js reads the sheet / a station the owner emptied */
 .menu-items { list-style: none; margin: 0; padding: 0; }
 .menu-items li { padding: 10px 0; border-bottom: 1px solid #f1e8da; }
@@ -525,6 +526,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 /* order picker */
 .order-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
 @media (max-width: 760px) { .order-grid { grid-template-columns: 1fr; } }
+.pick-hours { margin: 0 0 10px; font-size: .9rem; font-weight: 600; color: var(--green-deep); }
 .pick-list { display: grid; gap: 8px; max-height: 440px; overflow: auto; padding-right: 4px; }
 @media (max-width: 760px) { .pick-list { max-height: none; overflow: visible; padding-right: 0; } } /* phones: the page scrolls, no hidden inner list */
 .pick-item {

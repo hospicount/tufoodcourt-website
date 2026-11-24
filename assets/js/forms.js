@@ -74,6 +74,7 @@
     const v = el.validity;
     if (el.type === 'checkbox') return L('Requerido para continuar.', 'Required to continue.');
     if (v.customError) return el.validationMessage;
+    if (v.valueMissing && el.dataset.gone && el.dataset.goneOut) return L(`Esa hora queda fuera del horario de lo que pediste (${el.dataset.goneOut}); elige otra.`, `That time is outside the hours for what you ordered (${el.dataset.goneOut}); please choose another.`);
     if (v.valueMissing && el.dataset.gone) return L('La hora que elegiste ya no está disponible; elige otra.', 'The time you chose is no longer available; please choose another.');
     if (v.valueMissing) return el.tagName === 'SELECT' ? L('Elige una opción.', 'Choose an option.') : L('Este campo es requerido.', 'This field is required.');
     if (v.typeMismatch && el.type === 'email') return L('Escribe un email válido.', 'Enter a valid email.');
@@ -292,8 +293,12 @@
     const cart = []; // {uid, id, name, qty, opts:{key:value}, note}
     // The order just sent (until a new one starts) and whether the form is in «añadir a ese pedido» mode. `tried`/`tryKey` remember
     // the last addition attempt so a DIFFERENT addition after a failed (maybe delivered) one never reuses its -A<n> number.
-    const sent = { ref: '', f: null, adds: 0, tried: false, tryKey: '' };
+    // `start`/`asap` = the sent order's time window (minutes) so an addition can be checked against config.stationHours.
+    const sent = { ref: '', f: null, adds: 0, tried: false, tryKey: '', start: null, asap: false };
     let adding = false;
+    let winReady = false;  // the date/time-window fields below are wired (renderCart may only re-draw them after that)
+    let limitNotice = '';  // cart line about station hours (config.stationHours, e.g. pizzas 10:30 AM – 3:00 PM); HTML, rebuilt by syncLimit()
+    let limitNoticeText = '';
     const picker = form.querySelector('[data-picker]');
     const list = form.querySelector('[data-cart]');
     const cartErr = form.querySelector('[data-cart-error]');
@@ -336,6 +341,7 @@
       const stations = window.TFC_MENU;
       const s = stations.find((x) => x.id === station);
       const soon = TFC.isSoon(s.id);
+      const sh = TFC.time.stationHours(s.id); // «Horario de las pizzas: 10:30 AM – 3:00 PM» (config.stationHours)
       const pickable = (sec) => sec.items.filter((i) => i.orderable && i.available !== false);
       const list = soon ? '' : s.sections.map((sec) => pickable(sec).map((it) => TFC.isSoon(it.id) ? `
           <div class="pick-item pick-soon">
@@ -351,6 +357,9 @@
           <button type="button" class="menu-tab tab-${x.color}" aria-pressed="${x.id === station}" data-station="${x.id}">${esc(TFC.pick(x.station))}${TFC.isSoon(x.id) ? ' ' + TFC.soonTag() : ''}</button>`).join('')}
         </div>
         ${station === 'criollo' ? '<div class="criollo-today compact" data-criollo-today hidden></div>' : ''}
+        ${!soon && sh ? `<p class="pick-hours">${esc(adding
+          ? L(`Horario de ${sh.label}: ${sh.text}. Una adición mantiene la hora de tu pedido.`, `Hours for ${sh.label}: ${sh.text}. An addition keeps your order's time.`)
+          : L(`Horario de ${sh.label}: ${sh.text}. Con ${sh.label} en tu pedido, solo puedes elegir horas dentro de ese horario.`, `Hours for ${sh.label}: ${sh.text}. With ${sh.label} in your order, only times within those hours can be chosen.`))}</p>` : ''}
         <div class="pick-list">${soon ? `<p class="soon-note">${L('<strong>Próximamente.</strong> Esta estación abre muy pronto. Por ahora puedes pedir de las demás estaciones.', '<strong>Coming soon.</strong> This station opens soon. For now you can order from the other stations.')}</p>`
           : list || `<p class="menu-empty">${L('Sin platos disponibles por ahora.', 'No dishes available right now.')}</p>`}</div>`;
       picker.querySelectorAll('[data-station]').forEach((b) => b.addEventListener('click', () => {
@@ -440,7 +449,9 @@
 
     function renderCart() {
       announce();
-      const noticeHtml = cartNotice ? `<p class="field-error cart-notice" role="status">${esc(cartNotice)}</p>` : '';
+      syncLimit();
+      const noticeHtml = (cartNotice ? `<p class="field-error cart-notice" role="status">${esc(cartNotice)}</p>` : '')
+        + (limitNotice ? `<p class="field-error cart-notice" role="status" data-limit-notice>${limitNotice}</p>` : '');
       if (!cart.length) {
         list.innerHTML = `${noticeHtml}<p class="cart-empty">${L('Aún no has añadido nada. Toca un plato para añadirlo.', 'Nothing added yet. Tap a dish to add it.')}</p>`;
         refreshTotals();
@@ -472,6 +483,9 @@
             placeholder="${esc(it.notePh ? TFC.pick(it.notePh) : L('Nota (opcional): sin cebolla, extra salsa…', 'Note (optional): no onion, extra sauce…'))}">
         </div>`;
       }).join('');
+      const goWin = list.querySelector('[data-go-window]'); // «Elige otra hora» in the station-hours notice: jump up to the time field
+      if (goWin) goWin.addEventListener('click', (e) => { e.preventDefault(); win.scrollIntoView(scrollOpts()); win.focus({ preventScroll: true }); });
+      if (limitNoticeText && live) live.textContent += ` ${limitNoticeText}`;
       list.querySelectorAll('.cart-line').forEach((row) => {
         const l = cart.find((x) => x.uid === row.dataset.uid);
         const qty = row.querySelector('input[type=number]');
@@ -570,38 +584,118 @@
     const T = TFC.time;
     const nowMin = () => { const p = prParts(); return +p.hour * 60 + +p.minute; };
     const plural = (n) => (TFC.lang() === 'en' ? n + 's' : (n.endsWith('s') ? n : n + 's'));
+    // ----- station hours (config.stationHours): pizzas only from 10:30 AM, so a cart with pizza only offers windows inside those hours -----
+    // The hours that every limited station/dish in the cart shares (open = latest start, close = earliest end), or null.
+    function cartLimit() {
+      let lim = null;
+      cart.forEach((l) => {
+        const it = allItems[l.id];
+        if (!it) return;
+        [it.station.id, l.id].forEach((k) => {
+          const h = TFC.time.stationHours(k);
+          if (!h) return;
+          if (!lim) lim = { open: h.open, close: h.close, labels: [h.label] };
+          else {
+            lim.open = Math.max(lim.open, h.open); lim.close = Math.min(lim.close, h.close);
+            if (!lim.labels.includes(h.label)) lim.labels.push(h.label);
+          }
+        });
+      });
+      if (!lim) return null;
+      lim.last = lim.close - C.lastCallMinutesBeforeClose; // windows end by then, like the opening hours' last call
+      lim.text = TFC.time.fmtRange(lim.open, lim.close); // «10:30 AM – 3:00 PM» (labels, parentheses)
+      const f12 = TFC.time.fmt12, one = (m) => Math.floor(m / 60) % 12 === 1; // «a la 1:00 PM», «a las 2:00 PM» → «a 2:00 PM» like the signs
+      lim.span = L(`de${one(lim.open) ? ' la' : ''} ${f12(lim.open)} a${one(lim.close) ? ' la' : ''} ${f12(lim.close)}`, `from ${f12(lim.open)} to ${f12(lim.close)}`); // in sentences
+      lim.who = lim.labels.join(L(' y ', ' and '));
+      lim.Who = lim.who.charAt(0).toUpperCase() + lim.who.slice(1);
+      return lim;
+    }
+    // A window starting at `t` (minutes) — or «lo antes posible» placed at minute `t` — outside the limit.
+    const outOf = (lim, t, asap) => (asap ? t < lim.open || t >= lim.last : t < lim.open || t + C.slotMinutes > lim.last);
+    // An addition keeps the time of the order it adds to: a pizza can't join an order for 8:00 AM.
+    const addonOut = (lim) => !!(lim && sent.f && sent.start != null && outOf(lim, sent.start, sent.asap));
+    // Re-draw the time windows after the cart changed and rebuild the cart's station-hours notice.
+    function syncLimit() {
+      limitNotice = ''; limitNoticeText = '';
+      const lim = cartLimit();
+      if (adding) {
+        if (addonOut(lim)) {
+          const at = TFC.time.fmt12(sent.start); // «lo antes posible» says when it was placed: «(lo antes posible, pedido a las 9:05 AM)»
+          const when = sent.asap ? L(`lo antes posible, pedido a ${Math.floor(sent.start / 60) % 12 === 1 ? 'la' : 'las'} ${at}`, `as soon as possible, placed at ${at}`) : tr(sent.f.ventana);
+          limitNoticeText = L(`${lim.Who} se sirven ${lim.span} y la hora de tu pedido (${when}) queda fuera de ese horario. Quita ${lim.who} de esta adición y haz un pedido aparte con otra hora.`,
+            `${lim.Who} are served ${lim.span} and your order's time (${when}) is outside those hours. Remove ${lim.who} from this addition and place a separate order for another time.`);
+          limitNotice = esc(limitNoticeText);
+        }
+        return;
+      }
+      if (!winReady) return;
+      renderWindows();
+      if (lim && win.dataset.goneOut && !win.value) {
+        const old = tr(win.dataset.gone);
+        limitNoticeText = L(`${lim.Who} se sirven ${lim.span}, así que la hora que habías elegido (${old}) ya no sirve. Elige otra hora.`,
+          `${lim.Who} are served ${lim.span}, so the time you had chosen (${old}) no longer works. Choose another time.`);
+        limitNotice = esc(L(`${lim.Who} se sirven ${lim.span}, así que la hora que habías elegido (${old}) ya no sirve. `, `${lim.Who} are served ${lim.span}, so the time you had chosen (${old}) no longer works. `))
+          + `<a href="#d-ventana" data-go-window>${esc(L('Elige otra hora', 'Choose another time'))}</a>.`;
+      }
+    }
     function availability(iso) {
       const dow = parseISO(iso).getDay();
       const h = T.dayHours(dow);
-      if (!h) return { closed: true, soon: !!T.dayState && T.dayState(dow) === 'soon', slots: [], asap: false, open: 0 };
+      if (!h) return { closed: true, soon: !!T.dayState && T.dayState(dow) === 'soon', slots: [], asap: false, open: 0, storeOpen: 0, lim: null };
       const today = iso === todayISO(0);
       const last = h[1] - C.lastCallMinutesBeforeClose;
+      const lim = cartLimit();
       const slots = [];
       for (let t = h[0]; t + C.slotMinutes <= last; t += C.slotMinutes) {
-        slots.push({ label: T.fmtRange(t, t + C.slotMinutes), past: today && t + C.slotMinutes <= nowMin() + C.orderLeadMinutes });
+        slots.push({ t, label: T.fmtRange(t, t + C.slotMinutes), past: today && t + C.slotMinutes <= nowMin() + C.orderLeadMinutes, out: !!lim && outOf(lim, t, false) });
       }
-      const asap = today && nowMin() >= h[0] && nowMin() < last; // before opening, the regular windows are the honest offer
-      return { closed: false, slots, asap, open: slots.filter((x) => !x.past).length + (asap ? 1 : 0) };
+      const storeAsap = today && nowMin() >= h[0] && nowMin() < last; // before opening, the regular windows are the honest offer
+      const asap = storeAsap && !(lim && outOf(lim, nowMin(), true));
+      return {
+        closed: false, slots, asap, storeAsap, lim,
+        open: slots.filter((x) => !x.past && !x.out).length + (asap ? 1 : 0),
+        storeOpen: slots.filter((x) => !x.past).length + (storeAsap ? 1 : 0), // what the day offers without the station-hours limit
+      };
     }
+    // The chosen window disappeared only because of the station hours (not because it passed).
+    const goneByLimit = (a, label) => !!a.lim && (label === ASAP ? a.storeAsap && !a.asap : a.slots.some((x) => x.label === label && x.out && !x.past));
     let winDay = '';
     function hintText(a) {
       return a.soon ? L('Ese día todavía no abrimos (próximamente).', 'We are not open that day yet (coming soon).')
         : a.closed ? L('Ese día estamos cerrados.', 'We are closed that day.')
+        : a.open === 0 && a.lim && a.storeOpen > 0 ? L(`En esa fecha ya no quedan horas para ${a.lim.who} (${a.lim.text}); elige otra fecha.`, `No times left for ${a.lim.who} (${a.lim.text}) on that date; pick another date.`)
         : a.open === 0 ? L('Para hoy ya pasó la última llamada; elige otra fecha.', 'Today\'s last call has passed; pick another date.')
+        : win.dataset.gone && !win.value && win.dataset.goneOut && a.lim ? L(`La hora que elegiste queda fuera del horario de ${a.lim.who} (${a.lim.text}); elige otra.`, `The time you chose is outside the hours for ${a.lim.who} (${a.lim.text}); please choose another.`)
         : win.dataset.gone && !win.value ? L('La hora que elegiste ya no está disponible; elige otra.', 'The time you chose is no longer available; please choose another.')
+        : a.lim ? L(`${a.lim.Who} se sirven ${a.lim.span}: solo ves horas dentro de ese horario. Sujeta a disponibilidad; te confirmamos la hora exacta.`, `${a.lim.Who} are served ${a.lim.span}, so only times within those hours are shown. Subject to availability; we confirm the exact time.`)
         : L('Sujeta a disponibilidad; te confirmamos la hora exacta.', 'Subject to availability; we confirm the exact time.');
     }
     function renderWindows() {
-      const cur = win.value;
+      // A time dropped only because of the station hours comes back by itself when the pizza leaves the cart (no limit any more).
+      // While a pizza is still in the cart it is never picked again on its own (e.g. «lo antes posible» once it is 10:30): the customer chooses.
       const a = availability(date.value);
+      const back = !win.value && win.dataset.goneOut && winDay === date.value ? win.dataset.gone || '' : '';
+      const cur = win.value || (a.lim ? '' : back);
       const opts = [`<option value="">${L('Selecciona…', 'Choose…')}</option>`];
       if (a.asap) opts.push(`<option value="${ASAP}"${cur === ASAP ? ' selected' : ''}>${esc(tr(ASAP))}</option>`);
-      a.slots.forEach((x) => opts.push(`<option value="${esc(x.label)}"${x.past ? ' disabled' : ''}${x.label === cur ? ' selected' : ''}>${esc(x.label)}${x.past ? L(' (ya pasó)', ' (passed)') : ''}</option>`));
+      // Windows outside the station hours are left out (a cart with pizza starts at 10:30 AM); the hint below says why.
+      a.slots.forEach((x) => { if (!x.out) opts.push(`<option value="${esc(x.label)}"${x.past ? ' disabled' : ''}${x.label === cur ? ' selected' : ''}>${esc(x.label)}${x.past ? L(' (ya pasó)', ' (passed)') : ''}</option>`); });
       win.innerHTML = opts.join('');
       if (win.selectedIndex > 0 && win.options[win.selectedIndex].disabled) win.value = '';
-      // The time the customer chose can disappear while the page stays open (it passed, or last call came). Same day only:
-      // after a date change the empty choice is expected. Without this the only hint was a bare «Elige una opción.».
-      if (cur && !win.value && winDay === date.value) win.dataset.gone = cur; else if (win.value || winDay !== date.value) delete win.dataset.gone;
+      // The time the customer chose can disappear while the page stays open (it passed, last call came, or a pizza went into the cart).
+      // Same day only: after a date change the empty choice is expected. Without this the only hint was a bare «Elige una opción.».
+      if (cur && !win.value && winDay === date.value) {
+        win.dataset.gone = cur;
+        if (goneByLimit(a, cur)) win.dataset.goneOut = a.lim.text; else delete win.dataset.goneOut; // the hours text, for message()
+      } else if (win.value || winDay !== date.value) { delete win.dataset.gone; delete win.dataset.goneOut; }
+      else if (back && a.lim && !goneByLimit(a, back)) { delete win.dataset.gone; delete win.dataset.goneOut; } // allowed again: offer it, don't pick it
+      // A time put back in code fires no change event: drop the red «elige otra» error a failed send left under the field.
+      if (win.value && win.hasAttribute('aria-invalid')) {
+        win.removeAttribute('aria-invalid'); win.removeAttribute('aria-describedby');
+        const err = document.getElementById('err-' + win.name);
+        if (err && err.dataset.dyn) err.remove();
+      }
+      if (!win.dataset.goneOut && limitNotice && !adding) dropLimitNotice(); // the cart's «elige otra hora» line no longer applies
       winDay = date.value;
       const dn = T.dayName(parseISO(date.value).getDay());
       if (date.value && a.soon) date.setCustomValidity(L(`Los ${plural(dn)} todavía no abrimos (próximamente); elige otra fecha.`, `We're not open on ${plural(dn)} yet (coming soon); pick another date.`));
@@ -609,7 +703,16 @@
       else date.setCustomValidity('');
       winHint.textContent = hintText(a);
     }
-    win.addEventListener('change', () => { delete win.dataset.gone; winHint.textContent = hintText(availability(date.value)); });
+    win.addEventListener('change', () => {
+      delete win.dataset.gone; delete win.dataset.goneOut;
+      winHint.textContent = hintText(availability(date.value));
+      if (limitNotice && !adding) dropLimitNotice(); // a new time was chosen
+    });
+    function dropLimitNotice() {
+      limitNotice = ''; limitNoticeText = '';
+      const n = list.querySelector('[data-limit-notice]');
+      if (n) n.remove();
+    }
     // The first day that still has windows (after last call, or on a Sunday, that is the next open day).
     function firstOpenDay() {
       for (let i = 0; i <= C.maxAdvanceDays; i++) { const iso = todayISO(i); if (availability(iso).open > 0) return iso; }
@@ -622,6 +725,7 @@
     const want = new URLSearchParams(location.search).get('fecha') || '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(want) && want >= date.min && want <= date.max && availability(want).open > 0) date.value = want;
     date.addEventListener('change', () => { renderWindows(); refreshTotals(); }); // the weekly promotion follows the chosen date
+    winReady = true;
     // A phone can keep this page open for hours: re-check the calendar and the windows before sending and on coming back.
     function refreshDates(moveOn) {
       date.min = todayISO(0);
@@ -709,11 +813,12 @@
         `Estás añadiendo al pedido <strong>${esc(sent.ref)}</strong> (${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))} · ${where}). Se envía aparte, marcado como adición, con tus mismos datos y forma de pago (${esc(tr(f.pago))}). Puedes añadir hasta que te confirmemos tu pedido${tel ? `; si ya te confirmamos, llámanos al ${tel}` : ''}.`,
         `You are adding to order <strong>${esc(sent.ref)}</strong> (${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))} · ${where}). It is sent separately, marked as an addition, with your same details and payment method (${esc(tr(f.pago))}). You can add until we confirm your order${tel ? `; if we already confirmed it, call us at ${tel}` : ''}.`);
     }
-    function endAddon() { adding = false; form.classList.remove('is-addon'); banner.hidden = true; }
+    function endAddon() { adding = false; form.classList.remove('is-addon'); banner.hidden = true; renderPicker(); } // the pizza-hours note follows the mode
     function startAddon() {
       if (!sent.f) return;
       adding = true;
       form.classList.add('is-addon');
+      renderPicker();
       cart.length = 0; saveCart(); renderCart();
       form.querySelector('[name=notas]').value = ''; // the notes of the sent order are already with the owner
       form.querySelector('[data-form-error]').hidden = true;
@@ -745,6 +850,13 @@
         if (!cart.length) {
           cartErr.hidden = false;
           if (fieldsOk) { cartErr.scrollIntoView(scrollOpts()); cartTitle.focus({ preventScroll: true }); }
+          return false;
+        }
+        if (adding && addonOut(cartLimit())) { // e.g. a pizza added to an order for 8:00 AM: the notice above the cart (syncLimit) says what to do
+          // No renderCart() here: validate() just marked the cart lines and moved focus; rebuilding the cart would wipe both.
+          if (!list.querySelector('[data-limit-notice]') && fieldsOk) renderCart();
+          if (live && limitNoticeText) live.textContent = limitNoticeText;
+          if (fieldsOk) { list.scrollIntoView(scrollOpts()); cartTitle.focus({ preventScroll: true }); }
           return false;
         }
         return true;
@@ -813,11 +925,14 @@
           <p><strong>${adding ? L('Subtotal de esta adición', 'Subtotal of this addition') : 'Subtotal'}:</strong> ${esc(L(subtotalEs, subtotalEn))}</p>
           <p><strong>${pickup ? L('Recoger en', 'Pick up at') : L('Entrega', 'Deliver to')}:</strong> ${esc(pickup ? pickupPlace : f.entrega)} · ${esc(fmtDate(f.fecha))} · ${esc(tr(f.ventana))}</p>
           <p><strong>${L('Te confirmamos por', 'We confirm by')}:</strong> ${esc(tr(f.confirmar_por || ''))}</p>`;
-        return { payload, summaryHtml, plain: plainText(payload), f, addon: adding };
+        // The window's start (minutes) — for «lo antes posible», the minute it was sent — so a later addition can respect config.stationHours.
+        const slot = adding ? null : availability(f.fecha).slots.find((x) => x.label === f.ventana);
+        const start = adding ? null : f.ventana === ASAP ? nowMin() : slot ? slot.t : null;
+        return { payload, summaryHtml, plain: plainText(payload), f, addon: adding, start, asap: !adding && f.ventana === ASAP };
       },
       after(built) {
         if (built.addon) { sent.adds += 1; sent.tried = false; } // «-A1», «-A2»… for several additions to the same order
-        else { sent.ref = built.payload.Referencia; sent.f = built.f; sent.adds = 0; sent.tried = false; }
+        else { sent.ref = built.payload.Referencia; sent.f = built.f; sent.adds = 0; sent.tried = false; sent.start = built.start; sent.asap = built.asap; }
         endAddon();
         toast.hidden = true; clearTimeout(toastTimer); // the «Elegir opciones» toast must not stay over the confirmation
         try {

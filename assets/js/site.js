@@ -285,7 +285,14 @@
       ? `Same-day orders: ${parts.join(', ')}. You can also schedule for another day.`
       : `Pedidos para el mismo día: ${parts.join(' y ')}. También puedes programar tu pedido para otro día.`;
   }
-  TFC.time = { toMin, fmt12, fmtRange, dayHours, dayState, dayName: (d) => DAY_NAMES[lang][d], hoursLines, lastCallText };
+  // config.stationHours (e.g. pizzas 10:30 AM – 3:00 PM) → { open, close (minutes), label, text }, or null for a station/dish without a limit.
+  function stationHours(id) {
+    const h = C.stationHours && C.stationHours[id];
+    if (!h || !h.from || !h.until) return null;
+    const open = toMin(h.from), close = toMin(h.until);
+    return { open, close, label: TFC.pick(h.label) || id, text: fmtRange(open, close) };
+  }
+  TFC.time = { toMin, fmt12, fmtRange, dayHours, dayState, dayName: (d) => DAY_NAMES[lang][d], hoursLines, lastCallText, stationHours };
 
   // ---------- config bindings ----------
   function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -351,6 +358,7 @@
     const s = stations.find((x) => x.id === active);
     const soon = TFC.isSoon(s.id); // a preview: dishes without prices (they are announced when the station opens)
     const live = soon ? '' : liveIso(); // today's date while the weekly promotion is live: promo dishes show «was → now» prices
+    const sh = TFC.time.stationHours(s.id); // «Horario de las pizzas: 10:30 AM – 3:00 PM» (config.stationHours)
     const sections = s.sections.filter((sec) => sec.groups || TFC.visibleItems(sec).length).map((sec) => `
       <section class="menu-section">
         <h3>${esc(TFC.pick(sec.title))}</h3>
@@ -364,6 +372,7 @@
       <div class="menu-tabs">${tabs}</div>
       <div class="menu-panel panel-${s.color}">
         <p class="menu-tagline">${esc(TFC.pick(s.tagline))}</p>
+        ${!soon && sh ? `<p class="station-hours">${esc(lang === 'en' ? `Hours for ${sh.label}: ${sh.text}` : `Horario de ${sh.label}: ${sh.text}`)}</p>` : ''}
         ${soon ? `<p class="soon-note">${lang === 'en' ? '<strong>Coming soon.</strong> We are getting this station ready. Here is a preview of the menu; prices will be posted when it opens.' : '<strong>Próximamente.</strong> Estamos preparando esta estación. Aquí tienes un adelanto del menú; los precios se publican al abrir.'}</p>` : ''}
         ${s.id === 'criollo' ? '<div class="criollo-today" data-criollo-today hidden></div>' : ''}
         <div class="menu-sections">${sections || `<p class="menu-empty">${lang === 'en' ? 'No dishes available right now.' : 'Sin platos disponibles por ahora.'}</p>`}</div>
@@ -508,7 +517,8 @@
     const html = offer.names.map((n) => `<li>${esc(n)}</li>`).join('');
     if (list && list.dataset.key !== html) { list.dataset.key = html; list.innerHTML = html; }
     const fine = el.querySelector('[data-pz-fine]');
-    if (fine) fine.textContent = `${C.deliveryPaused ? (en ? 'Pickup at the counter' : 'Recogido en el mostrador') : (en ? 'Pickup or delivery' : 'Recogido o delivery')}\u00a0· ${en ? 'Prices before IVU' : 'Precios sin IVU'}`;
+    const pzHours = TFC.time.stationHours('pizza'); // «10:30 AM – 3:00 PM» first (config.stationHours)
+    if (fine) fine.textContent = `${pzHours ? pzHours.text + ' · ' : ''}${C.deliveryPaused ? (en ? 'Pickup at the counter' : 'Recogido en el mostrador') : (en ? 'Pickup or delivery' : 'Recogido o delivery')}\u00a0· ${en ? 'Prices before IVU' : 'Precios sin IVU'}`;
     el.hidden = false;
     return true;
   }

@@ -463,24 +463,76 @@
       </div>`;
     return true;
   }
-  // The catering ad runs every day (config.cateringAd): the big banner at the top, or a slim strip under the promo banner while that one shows.
+  // ---------- home pizza ad (config.pizzaAd: soft opening 2026-11-24) ----------
+  // 'soft' (soft-opening days), 'new' (afterwards) or '' (outside the dates, or the Pizza station is still «Próximamente»). Puerto Rico dates.
+  // The inline pre-paint script in index.html applies the same rule before the first paint; keep the two in step.
+  const pizzaPhase = () => {
+    const a = C.pizzaAd;
+    if (!a || !a.from || TFC.isSoon('pizza')) return '';
+    const t = todayPR();
+    if (t < a.from || (a.until && t > a.until)) return '';
+    return a.softOpeningUntil && t <= a.softOpeningUntil ? 'soft' : 'new';
+  };
+  // The pizzas that can be ordered now (menu.js + the «Precios» tab: «No» hides one) and the lowest site price among them (null = none priced).
+  function pizzaOffer() {
+    const st = (window.TFC_MENU || []).find((s) => s.id === 'pizza');
+    const names = [];
+    let min = null;
+    if (st) (st.sections || []).forEach((sec) => TFC.visibleItems(sec).forEach((it) => {
+      if (!it.orderable || TFC.isSoon(it.id)) return;
+      names.push(TFC.tr(it.name));
+      const regs = it.priceBy ? priced(it).map(([, v]) => adjust(v, it)) : (it.price == null ? [] : [adjust(it.price, it)]);
+      regs.forEach((r) => { if (min == null || r < min) min = r; });
+    }));
+    return { names, min };
+  }
+  // '0' = this device last found no pizza to order (every pizza «No» in the sheet): the pre-paint script in index.html then starts with the
+  // ad hidden instead of flashing it. '1' (or nothing, a first visit) = start with it shown.
+  const PIZZA_FLAG = 'tfc-pizza-ad';
+  // Shows/hides the ad (static markup in index.html) and refreshes its live bits; `slim` = the Friday-promo banner is on. Returns whether it shows.
+  function pizzaAd(slim) {
+    const el = document.querySelector('[data-pizza-ad]');
+    if (!el) return false;
+    const offer = pizzaOffer();
+    const known = !C.pricesSheetId || TFC.pricesKnown === true; // the «Precios» tab (or its cached copy) has been applied
+    if (known) { try { localStorage.setItem(PIZZA_FLAG, offer.names.length ? '1' : '0'); } catch (e) { /* storage unavailable */ } }
+    // No ad outside its dates or with nothing to order. While the sheet hasn't answered yet, keep the pre-paint's guess (no flash either way).
+    const phase = pizzaPhase();
+    if (!phase || !offer.names.length || (!known && el.hidden)) { el.hidden = true; return false; }
+    const en = lang === 'en';
+    el.dataset.phase = phase;
+    el.classList.toggle('is-slim', slim);
+    const from = el.querySelector('[data-pz-from]');
+    if (from) from.textContent = offer.min == null ? '' : (en ? 'From ' : 'Desde ') + TFC.money(offer.min);
+    const list = el.querySelector('[data-pz-list]');
+    const html = offer.names.map((n) => `<li>${esc(n)}</li>`).join('');
+    if (list && list.dataset.key !== html) { list.dataset.key = html; list.innerHTML = html; }
+    const fine = el.querySelector('[data-pz-fine]');
+    if (fine) fine.textContent = `${C.deliveryPaused ? (en ? 'Pickup at the counter' : 'Recogido en el mostrador') : (en ? 'Pickup or delivery' : 'Recogido o delivery')}\u00a0· ${en ? 'Prices before IVU' : 'Precios sin IVU'}`;
+    el.hidden = false;
+    return true;
+  }
+
+  // One big banner at the top of the home page: the Friday promo on its days, otherwise the pizza ad while it runs, otherwise the catering
+  // ad. The others become slim strips under it. The catering ad runs every day (config.cateringAd).
   function topBanners() {
     const promo = promoBanner();
+    const pizza = pizzaAd(promo);
     const ad = document.querySelector('[data-catering-ad]');
     if (!ad) return;
     ad.hidden = C.cateringAd === false;
-    ad.classList.toggle('is-slim', promo);
+    ad.classList.toggle('is-slim', promo || pizza);
   }
   document.addEventListener('tfc:lang', topBanners);
   document.addEventListener('tfc:prices', topBanners);
-  // A page left open past last call (or over midnight) flips the banners and the menu prices when the phone comes back.
+  // A page left open past last call (or over midnight) flips the banners (Friday promo, pizza-ad dates) and the menu prices when the phone comes back.
   let liveKey = liveIso();
   const resync = () => { topBanners(); const k = liveIso(); if (k !== liveKey) { liveKey = k; renderMenu(); } };
   document.addEventListener('visibilitychange', () => { if (!document.hidden) resync(); });
   window.addEventListener('pageshow', (e) => { if (e.persisted) resync(); });
   // A tab left in front (a desk computer) still flips at Friday's last call and at midnight: re-check once a minute. Cheap: the banner
   // only redraws when its state changed, the menu only when the live promo date did.
-  if (document.querySelector('[data-promo-banner], [data-menu]')) setInterval(() => { if (!document.hidden) resync(); }, 60000);
+  if (document.querySelector('[data-promo-banner], [data-pizza-ad], [data-menu]')) setInterval(() => { if (!document.hidden) resync(); }, 60000);
 
   // ---------- boot ----------
   header();

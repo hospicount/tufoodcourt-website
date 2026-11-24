@@ -19,8 +19,9 @@ window.TFC_CONFIG = {
   // its menu tab becomes a preview without prices, it cannot be ordered and its catering option is disabled.
   // A dish shows «Próximamente» instead of its price and cannot be ordered. To open one, remove its id here
   // (for a station also rewrite the "muy pronto" sentences: README → Estaciones y platos próximamente).
+  // (Pizza opened 2026-11-24, soft opening that week: owner. Mexicano opened 2026-11-05 with a limited menu: the «Precios» tab hides everything
+  // but nachos Carne/Carnitas and Cielito Lindo.)
   comingSoon: [
-    'pizza',                                    // station (Mexicano opens 2026-11-05 with a limited menu: the «Precios» tab hides everything but nachos Carne/Carnitas and Cielito Lindo)
     'catering-tacos',                           // the «Barra de tacos» option of the catering form stays disabled while the Mexican station sells nachos only
     'po-flan', 'po-tres-leches',                // desserts (available now: fruit salad, Choco Fudge Cake and Carrot Cake)
     'na-nachos-pollo',                          // chicken nachos (Carne and Carnitas nachos are sold now)
@@ -83,6 +84,12 @@ window.TFC_CONFIG = {
   // Home page catering ad («¡No cotizamos! Danos tu presupuesto y te hacemos tu actividad.», owner 2026-11-23): runs every day — the big
   // banner at the top of the home page, or a slim strip under the Friday-promo banner while that one is on. false = hide both.
   cateringAd: true,
+  // Home page pizza ad (owner, 2026-11-24: «Today we start with the pizzas!!! … Soft opening this week»). Shown from `from` to `until`
+  // (Puerto Rico dates, both days included; '' = no end). Until `softOpeningUntil` (included) it says «Soft opening esta semana» and invites
+  // people to try them; afterwards «¡Nuevo en Tu Food Court!». It hides itself while 'pizza' is in comingSoon or while every pizza is «No»
+  // in the «Precios» tab (nothing to order). Only one big banner at a time: the Friday-promo banner on its days, otherwise this one; the
+  // others become slim strips under it. null = off.
+  pizzaAd: { from: '2026-11-24', softOpeningUntil: '2026-11-27', until: '2026-12-11' },
 
   // "Hoy en la línea criolla": a Google Sheet the owner edits (one row per day, see README). Share the sheet as
   // "Anyone with the link → Viewer" (never Editor) and paste the long ID from its URL

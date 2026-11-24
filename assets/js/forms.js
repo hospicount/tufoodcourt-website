@@ -301,6 +301,9 @@
     const subtotal = form.querySelector('[data-subtotal]');
     const toast = document.querySelector('[data-toast]');
     let station = 'criollo';
+    // /delivery/?estacion=pizza (the home pizza ad): open the picker on that station when it exists and is not «Próximamente».
+    const wantStation = new URLSearchParams(location.search).get('estacion') || '';
+    if (window.TFC_MENU.some((x) => x.id === wantStation && !TFC.isSoon(x.id))) station = wantStation;
     let toastTimer = null;
 
     // Hidden items (prices sheet: Disponible = No) stay indexed; the 'tfc:prices' handler below removes them from the cart.

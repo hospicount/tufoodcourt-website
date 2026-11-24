@@ -191,6 +191,9 @@
   // ---------- state ----------
   let settled = false, lastSig = '', lastAttempt = 0, resolveReady;
   T.pricesPending = !!id; // renderers show "Cargando el menú…" while this is true (first answer or FIRST_PAINT_WAIT)
+  // true once the sheet's data (or its cached copy, or the decision to fall back to menu.js) has been applied; unlike pricesPending it does
+  // NOT turn true on the FIRST_PAINT_WAIT timeout. The home pizza ad waits for it before deciding whether any pizza can be ordered.
+  T.pricesKnown = !id;
   T.pricesReady = new Promise((r) => { resolveReady = r; });
 
   function settle(changed) {
@@ -204,6 +207,7 @@
     const sig = JSON.stringify(entries);
     const changed = sig !== lastSig;
     if (changed) { apply(entries); lastSig = sig; }
+    T.pricesKnown = true;
     settle(changed);
     return changed;
   }

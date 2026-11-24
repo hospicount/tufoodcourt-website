@@ -21,8 +21,8 @@
   <link rel="preconnect" href="https://docs.google.com" crossorigin>
   <link rel="preload" href="/assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/alfa-slab-one-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/site.css?v=20261123b">
-  <script src="/assets/js/config.js?v=20261123b"></script><!-- in the head (home only) so the pre-paint banner script below can read it -->
+  <link rel="stylesheet" href="/assets/css/site.css?v=20261124b">
+  <script src="/assets/js/config.js?v=20261124b"></script><!-- in the head (home only) so the pre-paint banner script below can read it -->
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"Restaurant","name":"Tu Food Court","url":"https://tufoodcourtpr.com/",
    "servesCuisine":["Puerto Rican","Pizza","Mexican"],"image":"https://tufoodcourtpr.com/assets/img/og-image.jpg",
@@ -40,7 +40,51 @@
     <!-- WEEKLY PROMO (filled by site.js from config.weeklyPromo; stays hidden when there is no promotion) -->
     <aside class="promo-hero" data-promo-banner aria-labelledby="promo-title" hidden></aside>
 
-    <!-- CATERING AD (every day, config.cateringAd; site.js turns it into a slim strip while the Friday-promo banner above is on) -->
+    <!-- PIZZA AD (config.pizzaAd: soft opening 2026-11-24). site.js shows it inside its dates while some pizza can be ordered, and turns it
+         into a slim strip while the Friday-promo banner above is on. The list, the «Desde $…» price and the fine print are refreshed from
+         menu.js + the «Precios» tab. -->
+    <aside class="pz-ad" data-pizza-ad data-phase="soft" aria-labelledby="pz-ad-title" hidden>
+      <div class="wrap pz-inner">
+        <div class="pz-art" aria-hidden="true">
+          <svg class="pz-pie" viewBox="0 0 172 160" width="172" height="160" focusable="false">
+            <defs>
+              <g id="pz-pie-g">
+                <circle cx="80" cy="80" r="74" fill="#d98b35"/>
+                <circle cx="80" cy="80" r="70" fill="#eaa549"/>
+                <circle cx="80" cy="80" r="63" fill="#c8401b"/>
+                <circle cx="80" cy="80" r="58" fill="#ffc94f"/>
+                <circle cx="66" cy="62" r="9" fill="#ffe08c"/><circle cx="104" cy="104" r="8" fill="#ffe08c"/><circle cx="52" cy="100" r="7" fill="#ffe08c"/><circle cx="118" cy="60" r="6" fill="#ffe08c"/>
+                <g fill="#b23412"><circle cx="54" cy="52" r="9.5"/><circle cx="96" cy="46" r="9.5"/><circle cx="62" cy="96" r="9.5"/><circle cx="100" cy="94" r="9.5"/><circle cx="80" cy="72" r="9.5"/><circle cx="44" cy="76" r="9"/><circle cx="84" cy="118" r="9"/><circle cx="124" cy="68" r="9"/></g>
+                <g fill="#8f2a0d"><circle cx="51" cy="50" r="1.6"/><circle cx="57" cy="55" r="1.4"/><circle cx="93" cy="44" r="1.6"/><circle cx="99" cy="49" r="1.4"/><circle cx="59" cy="94" r="1.6"/><circle cx="65" cy="99" r="1.4"/><circle cx="97" cy="92" r="1.6"/><circle cx="103" cy="97" r="1.4"/><circle cx="77" cy="70" r="1.6"/><circle cx="83" cy="75" r="1.4"/><circle cx="121" cy="66" r="1.6"/><circle cx="127" cy="71" r="1.4"/></g>
+                <g fill="#2f7d4f"><ellipse cx="72" cy="50" rx="6" ry="3" transform="rotate(-30 72 50)"/><ellipse cx="114" cy="84" rx="6" ry="3" transform="rotate(25 114 84)"/><ellipse cx="46" cy="116" rx="6" ry="3" transform="rotate(40 46 116)"/><ellipse cx="106" cy="122" rx="5.5" ry="2.8" transform="rotate(-20 106 122)"/><ellipse cx="40" cy="58" rx="5.5" ry="2.8" transform="rotate(60 40 58)"/></g>
+              </g>
+              <clipPath id="pz-rest"><path clip-rule="evenodd" d="M-20-20H180V180H-20Z M80 80 L153.7 28.4 L168.6 95.6Z"/></clipPath>
+              <clipPath id="pz-slice"><path d="M80 80 L153.7 28.4 L168.6 95.6Z"/></clipPath>
+            </defs>
+            <use href="#pz-pie-g" clip-path="url(#pz-rest)"/>
+            <g class="pz-slice"><use href="#pz-pie-g" clip-path="url(#pz-slice)" transform="translate(9 -2)"/></g>
+          </svg>
+          <span class="pz-new" data-i18n="pz.new">¡Nuevo!</span>
+        </div>
+        <div class="pz-copy">
+          <span class="pz-kicker pz-k-soft" data-i18n="pz.kSoft">Soft opening esta semana</span>
+          <span class="pz-kicker pz-k-new" data-i18n="pz.kNew">¡Nuevo en Tu Food Court!</span>
+          <p class="pz-title" id="pz-ad-title" data-i18n="pz.title">¡Llegaron las <span class="pz-hl">pizzas</span>!</p>
+          <p class="pz-sub"><span data-i18n="pz.sub">10" personal o 16" grande, recién salidas del horno.</span> <strong class="pz-from" data-pz-from>Desde $9.99</strong></p>
+          <ul class="pz-list" data-pz-list>
+            <li>Queso</li><li>Pepperoni</li><li>Veggies</li><li>Carbonara</li><li>Meat Lover</li>
+          </ul>
+          <p class="pz-soft" data-i18n="pz.soft">Ven a probarlas esta semana y dinos qué te parecen.</p>
+        </div>
+        <div class="pz-act">
+          <a class="btn btn-amber btn-lg" href="/delivery/?estacion=pizza" data-i18n="pz.cta">Pedir pizza →</a>
+          <a class="pz-menu" href="#menu" data-station-link="pizza" data-i18n="pz.menu">Ver las pizzas y precios</a>
+          <span class="pz-fine" data-pz-fine>Recogido o delivery&nbsp;· Precios sin IVU</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CATERING AD (every day, config.cateringAd; site.js turns it into a slim strip while the Friday-promo banner or the pizza ad above is on) -->
     <aside class="cat-ad" data-catering-ad aria-labelledby="cat-ad-title">
       <div class="wrap cat-inner">
         <div class="cat-badge" aria-hidden="true"><span class="cb-sign">$</span><span class="cb-txt" data-i18n="ad.badge">Tú pones el presupuesto</span></div>
@@ -61,29 +105,43 @@
       </div>
     </aside>
     <script>
-      // Before the first paint: on the Friday-promo days (from config.weeklyPromo.announceDaysBefore days ahead until the promo day's last
-      // call, Puerto Rico time) hand the top to the promo banner right away, so nothing jumps when site.js fills it in. site.js
-      // (TFC.promoNext / promoBanner) has the final word; keep this rule in step with it.
+      // Before the first paint: decide which top banner is big, so nothing jumps when site.js fills them in. One big banner at a time:
+      // the Friday promo (from config.weeklyPromo.announceDaysBefore days ahead until the promo day's last call), otherwise the pizza ad
+      // (config.pizzaAd dates); the others become slim strips under it. Puerto Rico time. site.js (TFC.promoNext / promoBanner, pizzaPhase /
+      // pizzaAd, topBanners) has the final word (it also hides the pizza ad when no pizza can be ordered, once the «Precios» tab has
+      // answered); keep these rules in step with it.
       (function () {
         try {
-          var C = window.TFC_CONFIG, ad = document.querySelector('[data-catering-ad]');
+          var C = window.TFC_CONFIG, ad = document.querySelector('[data-catering-ad]'), pz = document.querySelector('[data-pizza-ad]');
           if (C.cateringAd === false) ad.hidden = true;
-          var p = C.weeklyPromo, h = p && C.schedule[p.day];
-          if (!p || !(p.percent > 0 && p.percent < 100) || !Array.isArray(p.items) || !Array.isArray(h)) return;
           var o = {};
           new Intl.DateTimeFormat('en-US', { timeZone: C.timeZone, hourCycle: 'h23', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
             .formatToParts(new Date()).forEach(function (x) { o[x.type] = x.value; });
-          if (p.from && o.year + '-' + o.month + '-' + o.day < p.from) return;
-          var dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(o.weekday);
-          var c = h[1].split(':'), last = +c[0] * 60 + +c[1] - C.lastCallMinutesBeforeClose;
-          var days = (p.day - dow + 7) % 7;
-          if (days === 0 && +o.hour * 60 + +o.minute >= last) days = 7;
-          var ann = Number.isInteger(p.announceDaysBefore) && p.announceDaysBefore >= 0 ? p.announceDaysBefore : 1;
-          if (days > ann) return;
-          var b = document.querySelector('[data-promo-banner]');
-          b.hidden = false;
-          b.classList.add('is-pending');
-          ad.classList.add('is-slim');
+          var today = o.year + '-' + o.month + '-' + o.day, promo = false, pizza = false;
+          var p = C.weeklyPromo, h = p && C.schedule[p.day];
+          if (p && p.percent > 0 && p.percent < 100 && Array.isArray(p.items) && Array.isArray(h) && !(p.from && today < p.from)) {
+            var dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(o.weekday);
+            var c = h[1].split(':'), last = +c[0] * 60 + +c[1] - C.lastCallMinutesBeforeClose;
+            var days = (p.day - dow + 7) % 7;
+            if (days === 0 && +o.hour * 60 + +o.minute >= last) days = 7;
+            var ann = Number.isInteger(p.announceDaysBefore) && p.announceDaysBefore >= 0 ? p.announceDaysBefore : 1;
+            if (days <= ann) {
+              var b = document.querySelector('[data-promo-banner]');
+              b.hidden = false;
+              b.classList.add('is-pending');
+              promo = true;
+            }
+          }
+          var z = C.pizzaAd, seen = null;
+          try { seen = localStorage.getItem('tfc-pizza-ad'); } catch (e2) { /* storage unavailable */ }
+          // seen === '0': this device's last look at the «Precios» tab found no pizza to order (site.js PIZZA_FLAG): start hidden.
+          if (z && z.from && today >= z.from && !(z.until && today > z.until) && !(Array.isArray(C.comingSoon) && C.comingSoon.indexOf('pizza') !== -1) && seen !== '0') {
+            pz.dataset.phase = z.softOpeningUntil && today <= z.softOpeningUntil ? 'soft' : 'new';
+            if (promo) pz.classList.add('is-slim');
+            pz.hidden = false;
+            pizza = true;
+          }
+          if (promo || pizza) ad.classList.add('is-slim');
         } catch (e) { /* site.js decides */ }
       })();
     </script>
@@ -95,7 +153,7 @@
           <span class="hero-badge" data-cfg="openingLabel">¡Ya estamos abiertos!</span>
           <h1><span data-i18n="hero.title">Criollo, pizza y tacos</span>
             <span class="accent" data-i18n="hero.sub">en Metro Medical Center</span></h1>
-          <p class="hero-lead" data-i18n="hero.lead">Tu Food Court es el nuevo comedor del food court de Metro Medical Center en Bayamón: desayuno desde las 6:00 AM, almuerzo criollo hecho a diario y una estación mexicana que arranca con nachos. Muy pronto, también pizzas.</p>
+          <p class="hero-lead" data-i18n="hero.lead">Tu Food Court es el nuevo comedor del food court de Metro Medical Center en Bayamón: desayuno desde las 6:00 AM, almuerzo criollo hecho a diario, pizzas de 10" y 16" y una estación mexicana que arranca con nachos.</p>
           <div class="hero-ctas">
             <a class="btn btn-amber btn-lg" href="#menu" data-i18n="hero.cta1">Ver el menú</a>
             <a class="btn btn-ghost btn-lg" href="/delivery/" data-i18n="hero.cta2">Pedir delivery o recogido</a>
@@ -122,7 +180,7 @@
           </article>
           <article class="station station-red">
             <span class="station-num" aria-hidden="true">02</span>
-            <span class="soon-badge" data-soon="pizza" data-i18n="soon">Próximamente</span>
+            <span class="soon-badge" data-soon="pizza" data-i18n="soon" hidden>Próximamente</span>
             <h3>Pizza</h3>
             <p data-i18n="st.pizza">Cinco pizzas en 10" personal o 16" grande. De la clásica de queso a la Meat Lover.</p>
             <a href="#menu" data-station-link="pizza" data-i18n="st.see">Ver menú →</a>
@@ -198,7 +256,7 @@
             <li data-i18n="ct.i3">Semana de la Enfermería, Día del Médico y reconocimientos a empleados</li>
             <li data-i18n="ct.i4">Eventos privados y corporativos fuera del hospital</li>
           </ul>
-          <p class="muted" data-i18n="ct.lead2">Bandejas criollas, desayuno o picadera; muy pronto, también pizzas y barra de tacos. Desde drop-off hasta montaje completo.</p>
+          <p class="muted" data-i18n="ct.lead2">Bandejas criollas, desayuno, picadera o pizzas; muy pronto, también barra de tacos. Desde drop-off hasta montaje completo.</p>
         </div>
       </div>
     </section>
@@ -237,11 +295,11 @@
 
   <footer class="site-footer" data-site-footer></footer>
 
-  <script src="/assets/js/menu.js?v=20261123b"></script>
-  <script src="/assets/js/prices.js?v=20261123b"></script>
-  <script src="/assets/js/i18n.js?v=20261123b"></script>
-  <script src="/assets/js/site.js?v=20261123b"></script>
-  <script src="/assets/js/criollo.js?v=20261123b"></script>
+  <script src="/assets/js/menu.js?v=20261124b"></script>
+  <script src="/assets/js/prices.js?v=20261124b"></script>
+  <script src="/assets/js/i18n.js?v=20261124b"></script>
+  <script src="/assets/js/site.js?v=20261124b"></script>
+  <script src="/assets/js/criollo.js?v=20261124b"></script>
   <script>
     document.querySelectorAll('[data-station-link]').forEach(function (a) {
       a.addEventListener('click', function () {

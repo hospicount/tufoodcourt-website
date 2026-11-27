@@ -10,7 +10,7 @@ window.TFC_CONFIG = {
   // Contact details shown on the site. Leave '' to hide a line.
   phone: '787-449-1530', // shown in the contact card, the form footers and the «no se envió» box
   email: 'info@tufoodcourtpr.com',
-  instagram: '',      // TODO e.g. 'tufoodcourtpr'
+  instagram: 'tufoodcourt', // handle without the @ (owner opened the account 2026-11-27): footer «Contacto», the home «Visítanos» card and the /qr/ sign; also update "sameAs" in the JSON-LD of index.html
   facebook: '',       // TODO
 
   openingLabel: { es: '¡Ya estamos abiertos!', en: 'We\'re now open!' },

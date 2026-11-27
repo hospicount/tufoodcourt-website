@@ -343,6 +343,10 @@
       el.hidden = !text; // a cleared config value hides its element instead of leaving an empty pill/line
     });
     document.querySelectorAll('[data-cfg-pay]').forEach((el) => { el.textContent = listText(C.paymentOptions); });
+    document.querySelectorAll('[data-cfg-instagram]').forEach((el) => { // «Síguenos @…» on the /qr/ sign: hidden while there is no handle
+      el.hidden = !C.instagram;
+      el.querySelectorAll('[data-cfg-instagram-handle]').forEach((h) => { h.textContent = '@' + (C.instagram || ''); });
+    });
     document.querySelectorAll('[data-cfg-lastcall]').forEach((el) => { el.textContent = lastCallText(); });
     document.querySelectorAll('[data-cfg-hours-inline]').forEach((el) => { el.textContent = hoursLines().join(' · '); });
     document.querySelectorAll('[data-cfg-maps]').forEach((a) => {
@@ -356,7 +360,7 @@
       const lines = [];
       if (C.phone) lines.push(`<a href="tel:${esc(C.phone.replace(/[^\d+]/g, ''))}">${esc(C.phone)}</a>`);
       if (C.email) lines.push(`<a href="mailto:${esc(C.email)}">${esc(C.email)}</a>`);
-      if (C.instagram) lines.push(`<a href="https://instagram.com/${esc(C.instagram)}" target="_blank" rel="noopener">@${esc(C.instagram)}</a>`);
+      if (C.instagram) lines.push(`<a href="https://www.instagram.com/${esc(encodeURIComponent(C.instagram))}/" target="_blank" rel="noopener">Instagram @${esc(C.instagram)}</a>`);
       if (C.facebook) lines.push(`<a href="${esc(C.facebook)}" target="_blank" rel="noopener">Facebook</a>`);
       el.innerHTML = lines.join('<br>') || (lang === 'en' ? 'Coming soon' : 'Próximamente');
     });

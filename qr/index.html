@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" href="/assets/img/favicon.png">
   <link rel="preload" href="/assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/alfa-slab-one-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/site.css?v=20261127b">
+  <link rel="stylesheet" href="/assets/css/site.css?v=20261127c">
   <style>
     /* Print pieces: letter-size poster and a 4-up table-tent card sheet. */
     .tools { background: var(--paper); border-bottom: 1px solid var(--line); }
@@ -28,15 +28,17 @@
     .poster { background: var(--green); color: #fff; display: flex; flex-direction: column; align-items: center; text-align: center; padding: .7in .6in .5in; }
     .poster::before { content: ''; position: absolute; inset: 0; background: url('/assets/img/pattern-tile.png') repeat; background-size: 2.2in; opacity: .18; mix-blend-mode: soft-light; }
     .poster > * { position: relative; }
-    .poster .logo { width: 2.4in; margin-bottom: .15in; }
+    .poster .logo { width: 2.2in; margin-bottom: .15in; }
     .poster h1 { color: #fff; font-size: .56in; line-height: 1.05; margin: 0 0 .1in; }
     .poster h1 .accent { color: var(--amber); display: block; font-size: .72em; }
     .poster .sub { font-size: .19in; max-width: 6in; color: #e8f2ed; margin: 0 0 .22in; line-height: 1.35; }
     .poster .qr-box { background: #fff; border-radius: .25in; padding: .2in; box-shadow: 0 .15in .4in rgba(0,0,0,.25); }
-    .poster .qr-box img { width: 2.9in; height: 2.9in; display: block; }
-    .poster .url { font-family: var(--font-display); font-size: .32in; color: var(--amber); margin: .22in 0 .06in; letter-spacing: .5px; }
+    .poster .qr-box img { width: 2.55in; height: 2.55in; display: block; }
+    .poster .url { font-family: var(--font-display); font-size: .32in; color: var(--amber); margin: .18in 0 .06in; letter-spacing: .5px; }
     .poster .how { display: flex; gap: .3in; justify-content: center; font-size: .16in; font-weight: 800; color: #fff; margin-top: .1in; }
     .poster .how span { background: rgba(255,255,255,.14); border-radius: 999px; padding: .08in .22in; }
+    .poster .ig { font-size: .19in; font-weight: 800; color: #fff; margin: .16in 0 0; } /* «Síguenos»: logo and QR were trimmed (2.4→2.2in, 2.9→2.55in) so it clears the fine print */
+    .poster .ig strong { color: var(--amber); font-family: var(--font-display); font-weight: 400; font-size: 1.25em; letter-spacing: .5px; }
     .poster .fine { position: absolute; bottom: .32in; left: .6in; right: .6in; font-size: .13in; color: #bcd6c9; line-height: 1.35; }
 
     /* table tents / counter cards (4 per letter sheet, 4.25 x 5.5in each) */
@@ -52,6 +54,7 @@
     .tcard img.qr { width: 2in; height: 2in; background: #fff; padding: .1in; border-radius: .12in; border: 2px solid var(--line); }
     .tcard .url { font-family: var(--font-display); font-size: .19in; color: var(--green); margin-top: .1in; line-height: 1.3; }
     .tcard .mini { font-size: .11in; color: var(--muted); font-weight: 700; margin-top: .03in; line-height: 1.3; }
+    .tcard .ig { font-size: .13in; font-weight: 800; color: var(--green); margin-top: .06in; }
 
     @media print {
       @page { size: letter; margin: 0; }
@@ -61,6 +64,7 @@
       .sheet { box-shadow: none; page-break-after: always; zoom: 1; margin: 0; }
       .sheet[hidden] { display: none !important; }
       .poster { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .poster .qr-box { box-shadow: none; } /* Chrome's PDF flattens the blurred shadow into a dark rectangle over the pattern */
       .tcard, .poster, .poster::before { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
@@ -93,6 +97,7 @@
         <div class="qr-box"><img src="/assets/img/qr/qr-pedidos.svg" alt="Código QR: tufoodcourtpr.com/pedidos"></div>
         <p class="url">tufoodcourtpr.com/pedidos</p>
         <div class="how"><span>1 · Escanea</span><span>2 · Escoge</span><span>3 · Te confirmamos</span></div>
+        <p class="ig" data-cfg-instagram hidden>Síguenos en Instagram <strong data-cfg-instagram-handle></strong></p>
         <p class="fine">Criollo · Pizza · Tacos — Food Court, Metro Medical Center, Bayamón. <span data-cfg-hours-inline></span>. <span data-cfg-lastcall></span> El delivery requiere identificación de empleado al momento de la entrega. Pago: <span data-cfg-pay></span>.</p>
       </section>
 
@@ -106,6 +111,7 @@
             <img class="qr" src="/assets/img/qr/qr-pedidos.svg" alt="QR tufoodcourtpr.com/pedidos">
             <p class="url">tufoodcourtpr.com/pedidos</p>
             <p class="mini">Criollo · Pizza · Tacos</p>
+            <p class="ig" data-cfg-instagram hidden>Síguenos en Instagram <span data-cfg-instagram-handle></span></p>
           </div>
         </div>
         <div class="tcard">
@@ -116,6 +122,7 @@
             <img class="qr" src="/assets/img/qr/qr-pedidos.svg" alt="">
             <p class="url">tufoodcourtpr.com/pedidos</p>
             <p class="mini">Criollo · Pizza · Tacos</p>
+            <p class="ig" data-cfg-instagram hidden>Síguenos en Instagram <span data-cfg-instagram-handle></span></p>
           </div>
         </div>
         <div class="tcard">
@@ -126,6 +133,7 @@
             <img class="qr" src="/assets/img/qr/qr-pedidos.svg" alt="">
             <p class="url">tufoodcourtpr.com/pedidos</p>
             <p class="mini">Criollo · Pizza · Tacos</p>
+            <p class="ig" data-cfg-instagram hidden>Síguenos en Instagram <span data-cfg-instagram-handle></span></p>
           </div>
         </div>
         <div class="tcard">
@@ -136,6 +144,7 @@
             <img class="qr" src="/assets/img/qr/qr-pedidos.svg" alt="">
             <p class="url">tufoodcourtpr.com/pedidos</p>
             <p class="mini">Criollo · Pizza · Tacos</p>
+            <p class="ig" data-cfg-instagram hidden>Síguenos en Instagram <span data-cfg-instagram-handle></span></p>
           </div>
         </div>
       </section>
@@ -144,9 +153,9 @@
 
   <footer class="site-footer" data-site-footer></footer>
 
-  <script src="/assets/js/config.js?v=20261127b"></script>
-  <script src="/assets/js/i18n.js?v=20261127b"></script>
-  <script src="/assets/js/site.js?v=20261127b"></script>
+  <script src="/assets/js/config.js?v=20261127c"></script>
+  <script src="/assets/js/i18n.js?v=20261127c"></script>
+  <script src="/assets/js/site.js?v=20261127c"></script>
   <script>
     window.addEventListener('beforeprint', function () { if (TFC.lang() !== 'es') TFC.setLang('es'); }); // the printed pieces are always in Spanish
     document.querySelectorAll('[name=piece]').forEach(function (r) {

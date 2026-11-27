@@ -715,6 +715,8 @@
       const dow = parseISO(iso).getDay();
       const h = T.dayHours(dow);
       if (!h) return { closed: true, soon: !!T.dayState && T.dayState(dow) === 'soon', slots: [], asap: false, open: 0, storeOpen: 0, lim: null };
+      const off = T.closedDate ? T.closedDate(iso) : null; // a holiday (config.closedDates)
+      if (off) return { closed: true, holiday: off, soon: false, slots: [], asap: false, open: 0, storeOpen: 0, lim: null };
       const today = iso === todayISO(0);
       const last = h[1] - C.lastCallMinutesBeforeClose;
       const lim = cartLimit();
@@ -734,8 +736,9 @@
     const goneByLimit = (a, label) => !!a.lim && (label === ASAP ? a.storeAsap && !a.asap : a.slots.some((x) => x.label === label && x.out && !x.past));
     let winDay = '';
     function hintText(a) {
+      const why = a.holiday && a.holiday.label ? ` (${a.holiday.label})` : '';
       return a.soon ? L('Ese día todavía no abrimos (próximamente).', 'We are not open that day yet (coming soon).')
-        : a.closed ? L('Ese día estamos cerrados.', 'We are closed that day.')
+        : a.closed ? L(`Ese día estamos cerrados${why}.`, `We are closed that day${why}.`)
         : a.open === 0 && a.lim && a.storeOpen > 0 ? L(`En esa fecha ya no quedan horas para ${a.lim.who} (${a.lim.text}); elige otra fecha.`, `No times left for ${a.lim.who} (${a.lim.text}) on that date; pick another date.`)
         : a.open === 0 ? L('Para hoy ya pasó la última llamada; elige otra fecha.', 'Today\'s last call has passed; pick another date.')
         : win.dataset.gone && !win.value && win.dataset.goneOut && a.lim ? L(`La hora que elegiste queda fuera del horario de ${a.lim.who} (${a.lim.text}); elige otra.`, `The time you chose is outside the hours for ${a.lim.who} (${a.lim.text}); please choose another.`)
@@ -771,7 +774,8 @@
       if (!win.dataset.goneOut && limitNotice && !adding) dropLimitNotice(); // the cart's «elige otra hora» line no longer applies
       winDay = date.value;
       const dn = T.dayName(parseISO(date.value).getDay());
-      if (date.value && a.soon) date.setCustomValidity(L(`Los ${plural(dn)} todavía no abrimos (próximamente); elige otra fecha.`, `We're not open on ${plural(dn)} yet (coming soon); pick another date.`));
+      if (date.value && a.holiday) date.setCustomValidity(L(`El ${fmtDate(date.value)} estamos cerrados${a.holiday.label ? ` (${a.holiday.label})` : ''}; elige otra fecha.`, `We're closed on ${fmtDate(date.value)}${a.holiday.label ? ` (${a.holiday.label})` : ''}; pick another date.`));
+      else if (date.value && a.soon) date.setCustomValidity(L(`Los ${plural(dn)} todavía no abrimos (próximamente); elige otra fecha.`, `We're not open on ${plural(dn)} yet (coming soon); pick another date.`));
       else if (date.value && a.closed) date.setCustomValidity(L(`Los ${plural(dn)} estamos cerrados; elige otra fecha.`, `We're closed on ${plural(dn)}; pick another date.`));
       else date.setCustomValidity('');
       winHint.textContent = hintText(a);

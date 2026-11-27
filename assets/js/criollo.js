@@ -59,6 +59,9 @@
   const fromISO = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); return m && validDay(+m[1], +m[2], +m[3]) ? dayOf(+m[1], +m[2], +m[3]) : null; };
   // Closed per config.js schedule (0 = Sunday … 6 = Saturday; null = closed, 'soon' = not open yet). No schedule = never closed.
   const closedOn = (t) => !!C.schedule && !Array.isArray(C.schedule[t.dow]);
+  // A holiday in config.closedDates ('YYYY-MM-DD'): nothing shows that day, not even an explicit date row.
+  const holiday = (t) => !!C.closedDates && typeof C.closedDates === 'object'
+    && Object.prototype.hasOwnProperty.call(C.closedDates, `${t.y}-${String(t.m).padStart(2, '0')}-${String(t.d).padStart(2, '0')}`);
 
   // Date candidates for a text like "2026-11-03", "11/3/2026", "3/11", "3 de noviembre", "nov 3", "3".
   // Ambiguous a/b forms return both readings (US first); the caller disambiguates with the weekday when it has one.
@@ -119,9 +122,10 @@
   }
 
   // Precedence: an exact date row beats a weekday row, which beats a "Hoy" row. Among equals the LAST row wins.
-  // On a closed day (schedule) only an explicit date row shows.
+  // On a closed day (schedule) only an explicit date row shows; on a holiday (config.closedDates) nothing does.
   function pickRow(rows, t, h) {
     h = h == null ? 0 : h;
+    if (holiday(t)) return null;
     let date = null, weekday = null, any = null;
     for (let i = h + 1; i < rows.length; i++) {
       const c = classify(rows[i][0], t);

@@ -40,6 +40,20 @@ window.TFC_CONFIG = {
     5: ['06:00', '15:00'],
     6: 'soon',
   },
+  // Whole days closed on top of the weekly schedule (holidays). Key = 'YYYY-MM-DD' (Puerto Rico date); value = the reason shown to
+  // customers ({ es, en }, or '' for none). On these days the order form takes no orders (the date gets «Ese día estamos cerrados
+  // (Navidad)»), the Friday promotion is skipped (no banner, no promo prices), «Hoy en la línea criolla» shows nothing, and the hours
+  // lines (home «Horario» card + every page's footer) list the closures of the next 3 weeks. Catering requests are not limited (the owner arranges those). A past date can be
+  // deleted or left; it does nothing. Owner, 2026-11-27: closed on all these days.
+  closedDates: {
+    '2026-12-24': { es: 'Nochebuena', en: 'Christmas Eve' },
+    '2026-12-25': { es: 'Navidad', en: 'Christmas Day' },
+    '2026-12-31': { es: 'Despedida de año', en: 'New Year\'s Eve' },
+    '2027-01-01': { es: 'Año Nuevo', en: 'New Year\'s Day' },
+    '2027-01-06': { es: 'Día de Reyes', en: 'Three Kings Day' },
+    '2027-01-11': { es: 'Natalicio de Hostos', en: 'Hostos Day' },
+    '2027-01-18': { es: 'Día de Martin Luther King', en: 'Martin Luther King Jr. Day' },
+  },
   // Hours of a station (or a single dish) inside the opening hours — owner, 2026-11-24: «The pizza hours are from 10:30am up to 3pm».
   // Key = station id or dish id from menu.js; `from`/`until` = 24-hour 'HH:MM'; `label` = how sentences name it («Horario de las pizzas»).
   // An order (or an addition) with one of these dishes only offers time windows inside those hours: starting at `from` or later and

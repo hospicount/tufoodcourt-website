@@ -21,8 +21,8 @@
   <link rel="preconnect" href="https://docs.google.com" crossorigin>
   <link rel="preload" href="/assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/alfa-slab-one-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/site.css?v=20261124f">
-  <script src="/assets/js/config.js?v=20261124f"></script><!-- in the head (home only) so the pre-paint banner script below can read it -->
+  <link rel="stylesheet" href="/assets/css/site.css?v=20261127a">
+  <script src="/assets/js/config.js?v=20261127a"></script><!-- in the head (home only) so the pre-paint banner script below can read it -->
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"Restaurant","name":"Tu Food Court","url":"https://tufoodcourtpr.com/",
    "servesCuisine":["Puerto Rican","Pizza","Mexican"],"image":"https://tufoodcourtpr.com/assets/img/og-image.jpg",
@@ -124,6 +124,8 @@
             var c = h[1].split(':'), last = +c[0] * 60 + +c[1] - C.lastCallMinutesBeforeClose;
             var days = (p.day - dow + 7) % 7;
             if (days === 0 && +o.hour * 60 + +o.minute >= last) days = 7;
+            var pd = new Date(Date.UTC(+o.year, +o.month - 1, +o.day + days)).toISOString().slice(0, 10);
+            if (C.closedDates && Object.prototype.hasOwnProperty.call(C.closedDates, pd)) days = 99; // a holiday (config.closedDates): no promo that week
             var ann = Number.isInteger(p.announceDaysBefore) && p.announceDaysBefore >= 0 ? p.announceDaysBefore : 1;
             if (days <= ann) {
               var b = document.querySelector('[data-promo-banner]');
@@ -295,11 +297,11 @@
 
   <footer class="site-footer" data-site-footer></footer>
 
-  <script src="/assets/js/menu.js?v=20261124f"></script>
-  <script src="/assets/js/prices.js?v=20261124f"></script>
-  <script src="/assets/js/i18n.js?v=20261124f"></script>
-  <script src="/assets/js/site.js?v=20261124f"></script>
-  <script src="/assets/js/criollo.js?v=20261124f"></script>
+  <script src="/assets/js/menu.js?v=20261127a"></script>
+  <script src="/assets/js/prices.js?v=20261127a"></script>
+  <script src="/assets/js/i18n.js?v=20261127a"></script>
+  <script src="/assets/js/site.js?v=20261127a"></script>
+  <script src="/assets/js/criollo.js?v=20261127a"></script>
   <script>
     document.querySelectorAll('[data-station-link]').forEach(function (a) {
       a.addEventListener('click', function () {

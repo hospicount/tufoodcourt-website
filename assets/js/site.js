@@ -58,7 +58,7 @@
     return ids.includes(it.id) || (window.TFC_MENU || []).some((s) => ids.includes(s.id) && (s.sections || []).some((sec) => (sec.items || []).some((i) => i.id === it.id)));
   };
   // Is `it` (a menu item) discounted on the date `iso` (YYYY-MM-DD)?
-  TFC.promoApplies = (it, iso) => promoOn() && !!it && isoDow(iso) === C.weeklyPromo.day && !(C.weeklyPromo.from && iso < C.weeklyPromo.from) && inPromo(it);
+  TFC.promoApplies = (it, iso) => promoOn() && !!it && isoDow(iso) === C.weeklyPromo.day && !(C.weeklyPromo.from && iso < C.weeklyPromo.from) && !(TFC.time && TFC.time.closedDate(iso)) && inPromo(it); // no promo on a holiday (config.closedDates)
   // Normal price → promotional price, rounded DOWN to the cent (cents arithmetic: no floating-point surprises).
   TFC.promoPrice = (regular) => Math.floor(Math.round(regular * 100) * (100 - C.weeklyPromo.percent) / 100 + 1e-9) / 100;
   TFC.promoPercent = () => (promoOn() ? C.weeklyPromo.percent : 0);
@@ -100,6 +100,7 @@
     for (let i = 0; i <= 7; i++) {
       const iso = addDays(now.iso, i);
       if (isoDow(iso) !== p.day) continue;
+      if (TFC.time.closedDate(iso)) continue; // a holiday (config.closedDates): no promotion that week
       if (i === 0 && now.min >= h[1] - C.lastCallMinutesBeforeClose) continue; // last call has passed: the next one
       return { iso, days: i, today: i === 0, until: h[1] - C.lastCallMinutesBeforeClose };
     }
@@ -252,6 +253,32 @@
   }
   const dayHours = (dow) => { const h = C.schedule[dow]; return Array.isArray(h) ? [toMin(h[0]), toMin(h[1])] : null; }; // null for a closed or «soon» day
   const dayState = (dow) => (Array.isArray(C.schedule[dow]) ? 'open' : C.schedule[dow] === 'soon' ? 'soon' : 'closed');
+  // config.closedDates (holidays): { label } when `iso` (YYYY-MM-DD) is a closed date, else null. label = the reason in the current language ('' = none).
+  const closedDate = (iso) => {
+    const m = C.closedDates;
+    if (!m || typeof m !== 'object' || !/^\d{4}-\d{2}-\d{2}$/.test(String(iso || '')) || !Object.prototype.hasOwnProperty.call(m, iso)) return null;
+    return { label: String(TFC.pick(m[iso]) || '').trim() };
+  };
+  const MONTH_NAMES = {
+    es: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+    en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+  };
+  // «Cerrado: jueves 24 de diciembre (Nochebuena) · viernes 25 de diciembre (Navidad)» for the closed dates of the next `days` days that fall on
+  // an opening day ('' when there are none). For the home «Horario» card.
+  function closuresText(days) {
+    const out = [];
+    const t = todayPR();
+    for (let i = 0; i <= days; i++) {
+      const iso = addDays(t, i);
+      const cd = closedDate(iso);
+      const [y, mo, d] = iso.split('-').map(Number);
+      const dow = new Date(y, mo - 1, d, 12).getDay();
+      if (!cd || !Array.isArray(C.schedule[dow])) continue;
+      const day = lang === 'en' ? `${DAY_NAMES.en[dow]}, ${MONTH_NAMES.en[mo - 1]} ${d}` : `${DAY_NAMES.es[dow]} ${d} de ${MONTH_NAMES.es[mo - 1]}`;
+      out.push(cd.label ? `${day} (${cd.label})` : day);
+    }
+    return out.length ? `${lang === 'en' ? 'Closed' : 'Cerrado'}: ${out.join(' · ')}` : '';
+  }
   // Consecutive days with identical hours are grouped: "Lunes a viernes · 6:00 AM – 3:00 PM".
   function dayGroups() {
     const groups = [];
@@ -292,7 +319,7 @@
     const open = toMin(h.from), close = toMin(h.until);
     return { open, close, label: TFC.pick(h.label) || id, text: fmtRange(open, close) };
   }
-  TFC.time = { toMin, fmt12, fmtRange, dayHours, dayState, dayName: (d) => DAY_NAMES[lang][d], hoursLines, lastCallText, stationHours };
+  TFC.time = { toMin, fmt12, fmtRange, dayHours, dayState, closedDate, closuresText, dayName: (d) => DAY_NAMES[lang][d], hoursLines, lastCallText, stationHours };
 
   // ---------- config bindings ----------
   function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -310,7 +337,7 @@
       if (input.disabled) input.checked = false;
     });
     document.querySelectorAll('[data-cfg]').forEach((el) => {
-      const v = el.dataset.cfg === 'hours' ? hoursLines() : TFC.pick(C[el.dataset.cfg]);
+      const v = el.dataset.cfg === 'hours' ? hoursLines().concat(closuresText(21) || []) : TFC.pick(C[el.dataset.cfg]);
       const text = Array.isArray(v) ? v.map(esc).join('<br>') : esc(v ?? '');
       el.innerHTML = text;
       el.hidden = !text; // a cleared config value hides its element instead of leaving an empty pill/line
@@ -537,7 +564,8 @@
   document.addEventListener('tfc:prices', topBanners);
   // A page left open past last call (or over midnight) flips the banners (Friday promo, pizza-ad dates) and the menu prices when the phone comes back.
   let liveKey = liveIso();
-  const resync = () => { topBanners(); const k = liveIso(); if (k !== liveKey) { liveKey = k; renderMenu(); } };
+  let dayKey = todayPR(); // a new Puerto Rico day: re-draw the hours lines (the «Cerrado: …» closures move with the date)
+  const resync = () => { topBanners(); const d = todayPR(); if (d !== dayKey) { dayKey = d; bindConfig(); } const k = liveIso(); if (k !== liveKey) { liveKey = k; renderMenu(); } };
   document.addEventListener('visibilitychange', () => { if (!document.hidden) resync(); });
   window.addEventListener('pageshow', (e) => { if (e.persisted) resync(); });
   // A tab left in front (a desk computer) still flips at Friday's last call and at midnight: re-check once a minute. Cheap: the banner
